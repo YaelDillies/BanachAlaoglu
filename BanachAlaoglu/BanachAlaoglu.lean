@@ -22,8 +22,9 @@ lemma outMetric_self_iff : ∀ {x y : X}, ourMetric X gs x y = 0 ↔ x = y := by
 
     have sum_zero : ∀ n , ∑' n, 1/2^n * |gs n x - gs n y| = 0 → 1/2^n * |gs n x - gs n y| = 0 := by
       intro n sum
-      apply ENNReal.tsum_eq_zero.mp n (1/2^n * |gs n x - gs n y|)
+      --apply ENNReal.tsum_eq_zero.mp n (1/2^n * |gs n x - gs n y|)
       --rw[ENNReal.tsum_eq_zero] at sum
+      sorry
     sorry
     }
   { intro x_eq_y
@@ -57,18 +58,33 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric X gs x z ≤ ourMetric X gs 
 
   simp_rw[plusminus_eq_self]
 
-  have tri_eq : ∀ n, |gs n x + (gs n y - gs n y) - gs n z| ≤ (|gs n x - gs n y| + |gs n y - gs n z|) := by
+  have tri_ineq : ∀ n, 1/2^n * |gs n x + (gs n y - gs n y) - gs n z| ≤ 1/2^n * |gs n x - gs n y| + 1/2^n * |gs n y - gs n z| := by
     intro n
-    rw[← add_comm_sub, add_sub_assoc (gs n x - gs n y) (gs n y) (gs n z)]
-    apply abs_add (gs n x - gs n y) (gs n y - gs n z)
+    rw[← add_comm_sub, add_sub_assoc (gs n x - gs n y) (gs n y) (gs n z), ← mul_add]
+    refine (mul_le_mul_left ?_).mpr ?_
+    · refine one_div_pos.mpr ?refine_1.a
+      refine pow_pos ?refine_1.a.H n
+      linarith
+    · apply abs_add (gs n x - gs n y) (gs n y - gs n z)
 
-  --simp_rw[tri_eq]
-  --apply fun n ↦ tri_eq
-  --simp_rw[← add_assoc (gs n x) (gs n y) (- gs n y)]
-    --fun n ↦ sub_self (gs n y)
-  --refine Real.tsum_le_of_sum_range_le ?hf ?h
-  --apply tsum_sum
-  sorry
+  have tsum_tri_ineq : ∑' (n : ℕ), 1 / 2 ^ n * |gs n x + (gs n y - gs n y) - gs n z| ≤
+      ∑' (n : ℕ), (1 / 2 ^ n * |gs n x + - gs n y| + 1 / 2 ^ n * |gs n y - gs n z|) := by
+    --simp_rw[tri_eq]
+    apply tsum_le_tsum
+    · exact tri_ineq
+    · sorry
+    · sorry
+
+  have tsum_add_ineq : ∑' (n : ℕ), (1 / 2 ^ n * |gs n x + - gs n y| + 1 / 2 ^ n * |gs n y - gs n z|) =
+      ∑' (n : ℕ), 1 / 2 ^ n * |gs n x - gs n y| + ∑' (n : ℕ), 1 / 2 ^ n * |gs n y - gs n z| := by
+    rw[tsum_add]
+    · rfl
+    · sorry
+    · sorry
+
+  rw[tsum_add_ineq] at tsum_tri_ineq
+  exact tsum_tri_ineq
+
 --noncomputable instance ourMetric_space (MetricSpace X) := by
 
 /- If X is compact, and there exists a seq of continuous real-valued functions that
@@ -102,7 +118,8 @@ variable (x y : X)
 #check IsAbsoluteValue.abv_sub
 #check TopologicalSpace.MetrizableSpace
 #check TopologicalSpace.MetrizableSpace X
-#check MetricSpace X
+#check tsum_add
+
 
 end Metrizability_lemma
 
