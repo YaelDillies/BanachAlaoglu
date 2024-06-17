@@ -156,8 +156,7 @@ end Metrizability_lemma
 section Seq_Banach_Alaoglu
 
 --variable (𝕜 : Type*)
-variable (V : Type*) [AddCommGroup V] [Module ℂ V] -- (V tvs)
-variable [SeminormedAddCommGroup V] [NormedSpace ℂ V]
+variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace ℂ V]
 variable [TopologicalSpace.SeparableSpace V]
 variable (K : Set (WeakDual ℂ V)) (K_cpt : IsCompact K)
 
@@ -207,11 +206,7 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
   let B := (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
 
 
-  let ι : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) → WeakDual ℂ V := by
-    intro ϕ
-    let ψ := ϕ.val
-    convert ψ
-    sorry
+  --let ι : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) → WeakDual ℂ V := fun ϕ ↦ ϕ
 
   have b_isCompact : IsCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
     apply WeakDual.isCompact_closedBall
@@ -228,22 +223,16 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
       _ _ b_isCompact'
   have seq_cpt := (@seqCompactSpace_iff (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) _ ).mp seq_cpt_space
 
-
-  --fun ϕ ↦ ϕ
-
-
-  -- have seq_incl := @SeqCompactSpace.range (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
-     -- (WeakDual ℂ V) _ _ _ (Subtype.val ((WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) : Type _))
-
-
-
-
+  have seq_incl := @SeqCompactSpace.range (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
+                  (WeakDual ℂ V) _ _ _ (fun φ ↦ φ) continuous_subtype_val
+  convert seq_incl
+  simp
+  rfl
 /-
   apply IsCompact.isSeqCompact at b_isCompact
   · exact b_isCompact
   · sorry
 -/
-  sorry
 
 
 #check IsSeqCompact
