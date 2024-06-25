@@ -1,4 +1,28 @@
 
-- summable käsittely
-- oderclosedtopology
-- seqcompactspace määritelmä
+- seqcompacntess lemmat:
+   - mieti todistus paperilla
+    - yritä leanilla
+- ourMetric_self_iff:
+  - käytä tsum pos, kontrapositive
+
+- tri-ineq:
+    - Summability: ääretön summa suppenee
+    - Käytä termien boundia
+    - boundaa yläpuolelta, 1/2n suppenee
+- Summable:
+  - käytä: summable_of_norm_bounded
+           summable_geometric_iff_norm_lt_1
+
+- subset_metrizable: 
+  - separatespoints: käytä hypoteeseja
+
+- Kirjoita Seq B-A todistus overleafiin
+- Mieti todistusta: Duaali ei metristyvä jos V ääretönulotteinen
+- Kirjoita formalisoinnin vaiheita muistiin
+- Lue timanteista (lähteet: ohjaus jane Zulip)
+    
+- X-metrizable:
+    - Esittele outMetricSpace
+    - metristyvyys?
+    - Määrittele homeomorfirsmi ourMetricin ja alkuperäisen topologian välille
+    - homeomorfismista seuraa että alkuperäinen metrizable
