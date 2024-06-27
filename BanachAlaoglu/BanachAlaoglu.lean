@@ -10,9 +10,36 @@ lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y]
     (hf : SeqContinuous f) {K : Set X} (hK : IsSeqCompact K) : IsSeqCompact (f '' K) := by
   rw [IsSeqCompact]
   intro ys hy
+  simp [Set.mem_image] at hy
+  simp only [Set.mem_image, exists_exists_and_eq_and]
+  refine bex_def.mp ?_
 
-  --#check ys n
+
   sorry
+
+  --obtain ⟨n, x, hx⟩ := hy
+  --set n := ℕ
+  --specialize hy n
+
+  --refine bex_def.mp ?_
+  --obtain ⟨n, hn⟩ := hy n
+ -- have xs : ℕ → X := ∀ n : ℕ, xs n = (f ⁻¹' ys n)
+  --have y := Set Y
+
+  --have inv := @Function.invFun X Y _ f
+  --let xs : ℕ → X := fun n ↦ inv (ys n)
+  --have seq_cpt_k : SeqCompactSpace K := by
+    --sorry
+ -- have foo := @IsSeqCompact.subseq_of_frequently_in X _ K hK xs
+  --obtain ⟨a⟩
+
+  --have inv : ℕ → Y → X := fun n ↦ fun ys n ↦ f ⁻¹' (ys n)
+  -- have foo : ∀ n : ℕ, f (xs n)
+
+  --have inv : ℕ → K := fun n ↦ f ⁻¹' (ys n)
+
+--#check Filter.Tendsto (ys ∘ φ) Filter.atTop (nhds a)
+--#check
 
 example {X : Type*} [TopologicalSpace X] [SeqCompactSpace X] : IsSeqCompact (Set.univ : Set X) := by
   exact (seqCompactSpace_iff X).mp ‹SeqCompactSpace X›
@@ -28,6 +55,9 @@ lemma SeqCompactSpace.range {X Y : Type*} [TopologicalSpace X] [TopologicalSpace
 #check SeqCompactSpace
 #check IsSeqCompact
 #check @SeqCompactSpace.tendsto_subseq
+#check @IsSeqCompact.subseq_of_frequently_in
+#check Set.mem_image_iff_bex
+
 --#check fun n ↦ (xs n)
 
 end Seq_cpt_continuity
@@ -45,7 +75,7 @@ variable (gs_sep : Set.SeparatesPoints (Set.range gs))
 variable (gs_bdd : ∀ n : ℕ, ∀ x : X, ‖gs n x‖  ≤ 1)
 
 noncomputable def ourMetric (x y : X) : ℝ :=
-  ∑' n, 1/2^n * ‖gs n x - gs n y‖
+  ∑' n, (1/2)^n * ‖gs n x - gs n y‖
 
 
 lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
@@ -54,11 +84,32 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
   · intro sum
     rw [ourMetric] at sum
 
-    have sum_zero : ∑' n, 1/2^n * ‖gs n x - gs n y‖  = 0 → ∀ n, 1/2^n * ‖gs n x - gs n y‖  = 0 := by
+    have sum_zero : ∑' n, (1/2)^n * ‖gs n x - gs n y‖  = 0 → ∀ n, (1/2)^n * ‖gs n x - gs n y‖  = 0 := by
       intro sum
-      let f := fun n ↦ 1/2^n * ‖gs n x - gs n y‖
+      let f := fun n ↦ (1/2)^n * ‖gs n x - gs n y‖
       have summable_metric : Summable f := by
-        sorry
+        have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
+          exact fun n ↦ norm_sub_le_of_le (gs_bdd n x) (gs_bdd n y)
+        ring_nf at norm_bdd
+
+        have summable_geom := summable_geometric_two
+
+        have f_mul_summable : Summable (fun n ↦ 2 * ((1:ℝ) / 2) ^ n) := by
+          exact @Summable.mul_left ℕ ℝ _ _ _ (fun n ↦ (1 / 2 )^ n) 2 summable_geom
+
+        have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+            (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) f_mul_summable
+
+        have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
+            ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
+          intro i
+          simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+          RCLike.norm_ofNat, norm_norm]
+          rw [mul_comm]
+          simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+          exact norm_bdd i
+
+        exact summable_if_bounded this
       have terms_pos : ∀ n : ℕ, f n >= 0 := by
         have : ∀ n : ℕ, ‖gs n x - gs n y‖ >= 0 := by
           intro n
@@ -67,10 +118,32 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
         refine mul_nonneg ?ha (this n)
         norm_num
 
-      have tsum_zero := @tsum_pos ℕ  ℝ _ _ _ _ f summable_metric terms_pos
-      contrapose! tsum_zero
+      have tsum_pos := @tsum_pos ℕ  ℝ _ _ _ _ f summable_metric terms_pos
+      have tsum_pos2 : ∀ (i : ℕ), 0 < f i → 0 < ∑' (i : ℕ), f i := by
+        exact fun i a ↦ tsum_pos i a
+
+      have con : (∀ (i : ℕ), ∑' (i : ℕ), f i ≤ 0 → f i ≤ 0) ↔ (∀ (i : ℕ), 0 < f i → 0 < ∑' (i : ℕ), f i) := by
+        constructor
+        · exact fun a i a ↦ tsum_pos i a
+        · exact fun a i a ↦ le_imp_le_of_lt_imp_lt (tsum_pos i) a
+      rw [← con] at tsum_pos2
+
+      have zero_if_nonpos_pos : ∀ a : ℝ, ((0 <= a) ∧ (a <= 0)) ↔ a = 0 := by
+        intro a
+        constructor
+        · intro n
+          linarith
+        · intro a
+          exact le_antisymm_iff.mp (id (Eq.symm a))
+      --simp [terms_pos]
+
+      have tsum_zero : ∑' (i : ℕ), f i = 0 → ∀ (i : ℕ), f i = 0 := by
+        intro h
+        sorry
 
       sorry
+
+      --contrapose! tsum_zero
       /-have foo : (¬(∀ (i : ℕ), 0 < f i → 0 < ∑' (i : ℕ), f i)) = (∀ (i : ℕ), 0 = ∑' (i : ℕ), f i → 0 = f i) := by
         refine propext ?_
         constructor
@@ -79,7 +152,6 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
         · intro h1
           intro h2
 -/
-
 /-
       have foo2 : ∀ (i : ℕ), 0 = ∑' (i : ℕ), f i → 0 = f i := by
         contrapose! tsum_zero
@@ -87,12 +159,8 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
         exact tsum_zero
         sorry
 -/
-
       --contrapose tsum_zero
       --rw [foo]
-
-
-
      -- sorry
       --contrapose tsum_zero
       --:= @tsum_eq_zero_iff ℕ ℝ _ _ _ (fun n ↦ 1/2^n * |gs n x - gs n y|) summable_metric
@@ -102,24 +170,16 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
     have mul_zero : ∀ a b : ℝ , a * b = 0 ↔ a = 0 ∨ b = 0 := by
       exact fun a b ↦ mul_eq_zero
 
-    have mul_const_eq_zero : ∀ (n : ℕ), 1 / 2 ^ n * ‖gs n x - gs n y‖ = 0 → ‖gs n x - gs n y‖  = 0 := by
+    have mul_const_eq_zero : ∀ (n : ℕ), (1 / 2) ^ n * ‖gs n x - gs n y‖ = 0 → ‖gs n x - gs n y‖  = 0 := by
       intro n
       intro sum
-      rw [mul_zero (1 / 2 ^ n) (‖gs n x - gs n y‖)] at sum
+      rw [mul_zero ((1 / 2) ^ n) (‖gs n x - gs n y‖)] at sum
+      have foo2 : ∀ n : ℕ, ((1: ℝ) / 2) ^n > 0 := by apply @pow_pos ℝ _ (1/2); norm_num
+      rcases sum with h1 | h2
+      · simp [foo2] at sum
+        exact inseparable_zero_iff_norm.mp (congrArg nhds (sum n))
+      · exact h2
 
-      have foo : ‖gs n x - gs n y‖ = 0 := by
-        have foo2 : ∀ n : ℕ, 1 / 2 ^n ≥ 0 := by exact fun n ↦ Nat.zero_le (1 / 2 ^ n)
-        rcases sum with h1 | h2
-        ·
-
-          sorry
-        · exact h2
-
-
-      sorry
-      --apply mul_eq_zero at sum
-    --abs_eq_zero
-    --apply sum_zero at mul_const_eq_zero
     have foo : ∀ n, ‖gs n x - gs n y‖  = 0 := by
       intro n
       apply mul_const_eq_zero
@@ -128,8 +188,16 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
 
     simp at sum
     simp_rw [sub_eq_zero] at sum
-    have eq_sep : ∀ (n : ℕ), gs n x = gs n y → x = y := by sorry
-
+    have eq_sep : ∀ (n : ℕ), gs n x = gs n y → x = y := by
+      intro n
+      contrapose!
+      sorry
+      /-convert gs_sep
+      constructor
+      · exact fun a ↦ gs_sep
+      ·
+        sorry
+      -/
     sorry
 
   · intro x_eq_y
@@ -140,6 +208,8 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
 #check HasSum.summable
 #check HasSum
 #check mul_eq_zero
+#check @pow_pos ℝ _ (1/2)
+
 
 lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
   intro x y
@@ -147,7 +217,6 @@ lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
   have abs_eq : ∀ n, ‖gs n x - gs n y‖ = ‖gs n y - gs n x‖  := by
     intro n
     exact norm_sub_rev (gs n x) (gs n y)
-    --exact fun n ↦ no_sub_comm (gs n x) (gs n y)
   rw [tsum_congr]
   intro b
   rw [abs_eq]
@@ -156,94 +225,164 @@ lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
 lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
   intro x y z
   rw [ourMetric, ourMetric, ourMetric]
-/-
-  have plusminus_eq_zero : ∀ n, gs n y - gs n y = 0 := by
-    intro n
-    rw[sub_self (gs n y)]
--/
+
   have plusminus_eq_self : ∀ n, ‖gs n x - gs n z‖  = ‖gs n x + (gs n y - gs n y) - gs n z‖  := by
     intro n
     simp [sub_self (gs n y)]
-    --specialize plusminus_eq_zero n
-    --rw[plusminus_eq_zero, add_zero]
 
   simp_rw [plusminus_eq_self]
 
-  have tri_ineq : ∀ n, 1/2^n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ 1/2^n * ‖gs n x - gs n y‖ + 1/2^n * ‖gs n y - gs n z‖  := by
+  have tri_ineq : ∀ n, (1/2)^n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ (1/2)^n * ‖gs n x - gs n y‖ + (1/2)^n * ‖gs n y - gs n z‖  := by
     intro n
     rw [← add_comm_sub, add_sub_assoc (gs n x - gs n y) (gs n y) (gs n z) , ← mul_add]
     refine (mul_le_mul_left ?_).mpr ?_
-    · refine one_div_pos.mpr ?refine_1.a
-      refine pow_pos ?refine_1.a.H n
+    · refine pow_pos ?refine_1.H n
       linarith
     · exact norm_add_le (gs n x - gs n y) (gs n y - gs n z)
-      --apply norm_add (gs n x - gs n y) (gs n y - gs n z)
 
-  have tsum_tri_ineq : ∑' (n : ℕ), 1 / 2 ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤
-      ∑' (n : ℕ), (1 / 2 ^ n * ‖gs n x + - gs n y‖ + 1 / 2 ^ n * ‖gs n y - gs n z‖) := by
-    --simp_rw[tri_eq]
+
+  have tsum_tri_ineq : ∑' (n : ℕ), (1 / 2) ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤
+      ∑' (n : ℕ), ((1 / 2) ^ n * ‖gs n x - gs n y‖ + (1 / 2) ^ n * ‖gs n y - gs n z‖) := by
+
     apply tsum_le_tsum
-    · simp only [← sub_eq_add_neg]
-      exact tri_ineq
+    · exact tri_ineq
     · have abs_plus : ∀ n, ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ ‖gs n x‖  + ‖gs n z‖ := by
         intro n
         simp [norm_sub_le (gs n x) (gs n z)]
-      --specialize gs_bdd n x
 
-      have foo : ∀ n, ‖gs n x‖  + ‖gs n z‖  ≤ 1 + 1 := by
+      have norm_sum_bdd : ∀ n, ‖gs n x‖ + ‖gs n z‖  ≤ 1 + 1 := by
         intro n
         have gs_bdd' := gs_bdd
         specialize gs_bdd n x
         specialize gs_bdd' n z
         exact add_le_add gs_bdd gs_bdd'
 
-      have foo2 : ∀ n, ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ 1 + 1 := by
+      have norm_bdd : ∀ n, ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ 1 + 1 := by
         exact fun n ↦
           Preorder.le_trans ‖gs n x + (gs n y - gs n y) - gs n z‖ (‖gs n x‖ + ‖gs n z‖) (1 + 1)
-            (abs_plus n) (foo n) --le_trans
-      ring_nf at foo2
+            (abs_plus n) (norm_sum_bdd n)
+      ring_nf at norm_bdd
 
+      have summable_geom := summable_geometric_two
 
+      have f_mul_summable : Summable (fun n ↦ 2 * ((1:ℝ) / 2) ^ n) := by
+        exact @Summable.mul_left ℕ ℝ _ _ _ (fun n ↦ (1 / 2 )^ n) 2 summable_geom
 
-      set f_bound : ℕ → ℝ  := fun n ↦ (1 / 2 ^ n)
-      set f_bound_mul : ℕ → ℝ := fun n ↦ 2 * (1 / 2 ^ n)
+      have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+          (fun n ↦ (1/2)^n * ‖gs n x + (gs n y - gs n y) - gs n z‖) (fun n ↦ 2 * (1 / 2) ^ n) f_mul_summable
 
-      have := (@summable_geometric_iff_norm_lt_one ℝ _ (1 / 2)).mpr
-      have summable2 := summable_geometric_two
-      have f_summable : Summable f_bound := by sorry
-
-      have f_mul_summable := @Summable.const_smul ℝ ℕ ℝ _ _ _ _ _ (fun n ↦ (1 / 2 ^ n)) 2 f_summable
-      --refine [smul_eq_mul ℝ 2 (fun n ↦ 1 / 2 ^ n)] at f_mul_summable
-      have f_mul_summable2 : Summable (fun n ↦ 2 * (1 / 2 ^ n)) := by
-
-
-        --rw [smul_eq_mul ℝ 2 (fun n ↦ 1 / 2 ^ n)] at f_mul_summable
-        sorry
-      have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _ (fun n ↦ 1/2^n) (fun n ↦ (1 / 2 ^ n)) f_summable
-      --have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _ (fun n ↦ 1/2^n * ‖gs n x + (gs n y - gs n y) - gs n z‖) (fun n ↦ 2 * (1 / 2 ^ n)) f_mul_summable2
-
-      have : ∀ (i : ℕ), ‖(fun n ↦ (1 : ℝ) / 2 ^ n) i‖ ≤ (fun n ↦ 1 / 2 ^ n) i := by
+      have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖) i‖
+          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
         intro i
-        --apply Real.norm_of_nonneg (fun n ↦ (1 : ℝ) / 2 ^ n)
-        sorry
+        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+          RCLike.norm_ofNat, norm_norm]
+        rw [mul_comm]
+        simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+        exact norm_bdd i
 
-      have : (∀ (i : ℕ), ‖(fun n ↦ 1 / 2 ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖) i‖ ≤ f_bound_mul i) := by
+      exact summable_if_bounded this
+
+    · apply Summable.add
+      · have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
+          exact fun n ↦ norm_sub_le_of_le (gs_bdd n x) (gs_bdd n y)
+        ring_nf at norm_bdd
+
+        have summable_geom := summable_geometric_two
+
+        have f_mul_summable : Summable (fun n ↦ 2 * ((1:ℝ) / 2) ^ n) := by
+          exact @Summable.mul_left ℕ ℝ _ _ _ (fun n ↦ (1 / 2 )^ n) 2 summable_geom
+
+        have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+          (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) f_mul_summable
+
+        have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
+            ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
+          intro i
+          simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+            RCLike.norm_ofNat, norm_norm]
+          rw [mul_comm]
+          simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+          exact norm_bdd i
+
+        exact summable_if_bounded this
+
+      · have norm_bdd : ∀ n, ‖gs n y - gs n z‖  ≤ 1 + 1 := by
+          exact fun n ↦ norm_sub_le_of_le (gs_bdd n y) (gs_bdd n z)
+        ring_nf at norm_bdd
+
+        have summable_geom := summable_geometric_two
+
+        have f_mul_summable : Summable (fun n ↦ 2 * ((1:ℝ) / 2) ^ n) := by
+          exact @Summable.mul_left ℕ ℝ _ _ _ (fun n ↦ (1 / 2 )^ n) 2 summable_geom
+
+        have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+            (fun n ↦ (1/2)^n * ‖gs n y - gs n z‖) (fun n ↦ 2 * (1 / 2) ^ n) f_mul_summable
+
+        have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n y - gs n z‖) i‖
+            ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
+          intro i
+          simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+            RCLike.norm_ofNat, norm_norm]
+          rw [mul_comm]
+          simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+          exact norm_bdd i
+
+        exact summable_if_bounded this
+
+
+  have pm : ∀ n : ℕ, ‖gs n x + -gs n y‖ = ‖gs n x -gs n y‖ := by simp[sub_eq_add_neg]
+
+  have fsummable : Summable fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖ := by
+    have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
+        exact fun n ↦ norm_sub_le_of_le (gs_bdd n x) (gs_bdd n y)
+    ring_nf at norm_bdd
+
+    have summable_geom := summable_geometric_two
+
+    have f_mul_summable : Summable (fun n ↦ 2 * ((1:ℝ) / 2) ^ n) := by
+      exact @Summable.mul_left ℕ ℝ _ _ _ (fun n ↦ (1 / 2 )^ n) 2 summable_geom
+
+    have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+        (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) f_mul_summable
+
+    have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
+          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
         intro i
+        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+          RCLike.norm_ofNat, norm_norm]
+        rw [mul_comm]
+        simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+        exact norm_bdd i
 
-        sorry
-      sorry
-    · sorry
+    exact summable_if_bounded this
 
+  have gsummable : Summable fun n ↦ (1 / 2) ^ n * ‖gs n y - gs n z‖ := by
+    have norm_bdd : ∀ n, ‖gs n y - gs n z‖  ≤ 1 + 1 := by
+        exact fun n ↦ norm_sub_le_of_le (gs_bdd n y) (gs_bdd n z)
+    ring_nf at norm_bdd
 
-      --summable_geometric_iff_norm_lt_1
+    have summable_geom := summable_geometric_two
 
-  have tsum_add_ineq : ∑' (n : ℕ), (1 / 2 ^ n * ‖gs n x + - gs n y‖ + 1 / 2 ^ n * ‖gs n y - gs n z‖) =
-      ∑' (n : ℕ), 1 / 2 ^ n * ‖gs n x - gs n y‖ + ∑' (n : ℕ), 1 / 2 ^ n * ‖gs n y - gs n z‖ := by
+    have f_mul_summable : Summable (fun n ↦ 2 * ((1:ℝ) / 2) ^ n) := by
+        exact @Summable.mul_left ℕ ℝ _ _ _ (fun n ↦ (1 / 2 )^ n) 2 summable_geom
 
-    --apply tsum_add
-    · sorry
+    have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+          (fun n ↦ (1/2)^n * ‖gs n y - gs n z‖) (fun n ↦ 2 * (1 / 2) ^ n) f_mul_summable
 
+    have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n y - gs n z‖) i‖
+          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
+        intro i
+        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+          RCLike.norm_ofNat, norm_norm]
+        rw [mul_comm]
+        simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+        exact norm_bdd i
 
+    exact summable_if_bounded this
+
+  have tsum_add_ineq : ∑' (n : ℕ), ((1 / 2) ^ n * ‖gs n x - gs n y‖ + (1 / 2) ^ n * ‖gs n y - gs n z‖) =
+      ∑' (n : ℕ), (1 / 2) ^ n * ‖gs n x - gs n y‖ + ∑' (n : ℕ), (1 / 2)^ n * ‖gs n y - gs n z‖ := by
+    rw [tsum_add fsummable gsummable]
 
   rw [tsum_add_ineq] at tsum_tri_ineq
   exact tsum_tri_ineq
@@ -252,6 +391,7 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 #check Summable.of_norm_bounded
 #check @summable_geometric_iff_norm_lt_one
 #check Summable.const_smul
+#check tsum_add
 
 
 
@@ -259,7 +399,7 @@ noncomputable def ourMetricSpace : MetricSpace X where
   dist := ourMetric gs
   dist_self := by
     intro x
-    exact (@ourMetric_self_iff X 𝕜 _ gs x x ).mpr rfl
+    exact (@ourMetric_self_iff X 𝕜 _ gs gs_bdd x x ).mpr rfl
   dist_comm := by
     intro x y
     exact (@ourMetric_comm X 𝕜 _ gs x y)
@@ -269,7 +409,7 @@ noncomputable def ourMetricSpace : MetricSpace X where
   edist_dist := by simp [← ENNReal.ofReal_coe_nnreal]
   eq_of_dist_eq_zero := by
     intro x y
-    exact (@ourMetric_self_iff X 𝕜 _ gs x y).mp
+    exact (@ourMetric_self_iff X 𝕜 _ gs gs_bdd x y).mp
 
 def kopio (X :Type*) (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) := X
 
@@ -284,18 +424,41 @@ noncomputable instance : MetricSpace (kopio X gs gs_sep gs_bdd) := ourMetricSpac
 
 lemma cont_kopio_mk (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) :
     Continuous (kopio.mk X gs gs_sep gs_bdd) := by
-    rw[kopio.mk]
-    refine continuous_id_of_le ?h
+  dsimp [kopio.mk]
+  refine continuous_id_iff_le.mpr ?_
+  refine isOpen_implies_isOpen_iff.mp ?_
+  intro s openS
 
-    sorry
+
+  --‹TopologicalSpace X›
+  sorry
+
+
+
+  /-
+  rw[kopio.mk]
+  refine { isOpen_preimage := ?isOpen_preimage }
+  intro s openS
+  refine isOpen_coinduced.mp ?isOpen_preimage.a
+-/
+
+
 
 lemma cont_kopio_toOrigin (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) :
     Continuous (kopio.toOrigin X gs gs_sep gs_bdd) := by
     rw [kopio.toOrigin]
-    refine continuous_id_of_le ?h
+
+    --rw[kopio]
+    refine SeqContinuous.continuous ?_
+    intro h1 h2 h3
+
+
+
     sorry
 
 #check continuous_id
+#check TopologicalSpace.coinduced id ‹TopologicalSpace X›
+#check UniformSpace.toTopologicalSpace
 
 noncomputable def homeomorph_OurMetric :
   X ≃ₜ kopio X gs gs_sep gs_bdd where
@@ -305,16 +468,7 @@ noncomputable def homeomorph_OurMetric :
     right_inv := by exact congrFun rfl
     continuous_toFun := by exact cont_kopio_mk X gs gs_sep gs_bdd
     continuous_invFun := by exact cont_kopio_toOrigin X gs gs_sep gs_bdd
-/-
-noncomputable def homeomorph_OurMetric :
-    ProbabilityMeasure Ω ≃ₜ LevyProkhorov (ProbabilityMeasure Ω) where
-  toFun := ProbabilityMeasure.toLevyProkhorov (Ω := Ω)
-  invFun := LevyProkhorov.toProbabilityMeasure (Ω := Ω)
-  left_inv := congrFun rfl
-  right_inv := congrFun rfl
-  continuous_toFun := ProbabilityMeasure.continuous_toLevyProkhorov
-  continuous_invFun := LevyProkhorov.continuous_toProbabilityMeasure
--/
+
 
 --#check X ≃ₜ ourMetricSpace gs
 #check ourMetricSpace gs
@@ -330,14 +484,6 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [TopologicalSpace X] [Com
 
 
   sorry
-/-
-instance (X : Type*) [TopologicalSpace X] [MetrizableSpace X] [SeparableSpace X]
-    [MeasurableSpace X] [OpensMeasurableSpace X] :
-    PseudoMetrizableSpace (ProbabilityMeasure X) :=
-  letI : PseudoMetricSpace X := TopologicalSpace.pseudoMetrizableSpacePseudoMetric X
-  (homeomorph_probabilityMeasure_levyProkhorov (Ω := X)).inducing.pseudoMetrizableSpace
--/
-
 
 #check Set.range gs
 #check Set.SeparatesPoints (Set.range gs)
@@ -370,11 +516,17 @@ example (ϕ : WeakDual ℂ V) (v : V) : False := by
 lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
   set vs := TopologicalSpace.denseSeq V
   set gs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
-  constructor
-  · sorry
-  · sorry
-  -- TopologicalSpace.exists_countable_dense
-  --exact Continuous.comp (WeakDual.eval_continuous (vs n)) continuous_subtype_val
+  refine Exists.intro ?w ?h
+  · exact fun a a ↦ Complex.I
+  · refine ⟨?h.left, ?h.right⟩
+    · exact fun n ↦ continuous_const
+    · intro x y x_ne_y
+
+
+      sorry
+
+#check TopologicalSpace.exists_countable_dense
+--#check Continuous.comp (WeakDual.eval_continuous (vs n)) continuous_subtype_val
 
 
 
@@ -395,11 +547,20 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
     /-have := @Continuous.comp K (WeakDual ℂ V) ℂ _ _ _ (fun ψ ↦ ψ) (fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)) phi_c (by exact
       continuous_subtype_val)-/
   · intro x y x_ne_y
-    --refine exists_exists_eq_and.mpr ?intro.intro.gs_sep.a
+    refine exists_exists_eq_and.mpr ?intro.intro.gs_sep.a
     unfold_let
-    have gs_sep2 : ∃n, gs n (x:↑K) ≠ gs n (y:↑K) := by
+    have ⟨h1, h2, h3⟩ := @exists_gs V _ _ _ K
+    letI f : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ h1 n (ϕ : WeakDual ℂ V)
+    have : ∀ a : ℕ, (fun n ϕ ↦ gs n ↑ϕ) a = (fun ϕ ↦ gs a ↑ϕ) := by exact fun a ↦ rfl
+    simp
 
-      sorry
+
+    sorry
+
+
+    --have gs_sep2 : ∃n, gs n (x:↑K) ≠ gs n (y:↑K) := by
+
+      --sorry
     /-have hs_sep : (Set.range hs).SeparatesPoints := by
       unfold_let
       intro x y xny
@@ -407,15 +568,16 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
       sorry-/
     --dsimp
     --exact hs_sep
-    sorry
+
 
 
 
 
     --have exists_sep : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), Set.SeparatesPoints (Set.range gs) := by
-
+#check X_metrizable
 #check Continuous.restrict
 #check @WeakDual.toNormedDual ℂ _ V _ _
+#check Subalgebra.SeparatesPoints
 
 
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
@@ -453,6 +615,8 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
   simp only [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
   rfl
   --sorry
+
+
 
 
 #check Continuous.seqContinuous
