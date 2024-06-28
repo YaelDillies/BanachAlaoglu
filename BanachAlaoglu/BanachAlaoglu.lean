@@ -551,25 +551,16 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuou
 
 /- A compact subset of the dual V* of a separable space V is metrizable. -/
 lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
-  have k_cpt' : CompactSpace K := by
-    exact isCompact_iff_compactSpace.mp K_cpt
-  set vs := TopologicalSpace.denseSeq V
+  have k_cpt' : CompactSpace K := by exact isCompact_iff_compactSpace.mp K_cpt
   have := exists_gs V K
   obtain ⟨gs, gs_cont, gs_sep⟩ := this
-  letI hs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual ℂ V)
-
+  let hs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual ℂ V)
   apply X_metrizable K ℂ hs
   · intro n
     exact Continuous.comp (gs_cont n) continuous_subtype_val
-    /-have phi_c : Continuous fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n) := by
-      exact WeakDual.eval_continuous (vs n)-/
-    /-have := @Continuous.comp K (WeakDual ℂ V) ℂ _ _ _ (fun ψ ↦ ψ) (fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)) phi_c (by exact
-      continuous_subtype_val)-/
   · intro x y x_ne_y
     refine exists_exists_eq_and.mpr ?intro.intro.gs_sep.a
     unfold_let
-    have ⟨h1, h2, h3⟩ := @exists_gs V _ _ _ K
-    letI f : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ h1 n (ϕ : WeakDual ℂ V)
     have subst : ∀ a : ℕ, (fun n ϕ ↦ gs n ↑ϕ) a x ≠ (fun n ϕ ↦ gs n ↑ϕ) a y → gs a x ≠ gs a y := by
       exact fun a a ↦ a
     simp only [subst]
@@ -583,7 +574,10 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
 #check Continuous.restrict
 #check @WeakDual.toNormedDual ℂ _ V _ _
 #check Subalgebra.SeparatesPoints
-
+/-have phi_c : Continuous fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n) := by
+      exact WeakDual.eval_continuous (vs n)-/
+/-have := @Continuous.comp K (WeakDual ℂ V) ℂ _ _ _ (fun ψ ↦ ψ) (fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)) phi_c (by exact
+      continuous_subtype_val)-/
 
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ) :
