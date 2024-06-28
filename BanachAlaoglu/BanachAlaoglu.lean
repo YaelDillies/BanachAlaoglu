@@ -12,7 +12,6 @@ lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y]
   intro ys hy
   simp [Set.mem_image] at hy
   simp only [Set.mem_image, exists_exists_and_eq_and]
-  refine bex_def.mp ?_
 
 
   sorry
@@ -110,6 +109,7 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
           exact norm_bdd i
 
         exact summable_if_bounded this
+
       have terms_pos : ∀ n : ℕ, f n >= 0 := by
         have : ∀ n : ℕ, ‖gs n x - gs n y‖ >= 0 := by
           intro n
@@ -137,9 +137,9 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
           exact le_antisymm_iff.mp (id (Eq.symm a))
       --simp [terms_pos]
 
-      have tsum_zero : ∑' (i : ℕ), f i = 0 → ∀ (i : ℕ), f i = 0 := by
-        intro h
-        sorry
+      --simp only [one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff', OfNat.ofNat_ne_zero,
+        --ne_eq, false_and, norm_eq_zero, false_or]
+
 
       sorry
 
@@ -191,6 +191,7 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
     have eq_sep : ∀ (n : ℕ), gs n x = gs n y → x = y := by
       intro n
       contrapose!
+
       sorry
       /-convert gs_sep
       constructor
@@ -198,6 +199,7 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
       ·
         sorry
       -/
+
     sorry
 
   · intro x_eq_y
@@ -477,13 +479,31 @@ noncomputable def homeomorph_OurMetric :
 separates points on X, then X is metrizable. -/
 lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [TopologicalSpace X] [CompactSpace X]
     (gs : ℕ → X → 𝕜) (gs_cont : ∀ n, Continuous (gs n))
-    (gs_sep : Set.SeparatesPoints (Set.range gs)) :
+    (gs_sep : Set.SeparatesPoints (Set.range gs)): --(gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) : --gs_bdd ei pitäisi tarvita
     TopologicalSpace.MetrizableSpace X := by
   --refine ⟨?_⟩
-  have := @homeomorph_OurMetric X 𝕜 _ _ _ gs gs_sep gs_bdd
+  have hom := @homeomorph_OurMetric X 𝕜 _ _ _ gs gs_sep  --gs_bdd
+  --have induced_eq := @Homeomorph.induced_eq X (kopio X gs gs_sep gs_bdd) _ _ hom
+  --have induced := @inducing_induced X (kopio X gs gs_sep gs_bdd) _ hom
+  --have psm := @TopologicalSpace.MetrizableSpace.toPseudoMetrizableSpace (kopio X gs gs_sep gs_bdd) _ _
+  --have := @Inducing.pseudoMetrizableSpace X (kopio X gs gs_sep gs_bdd) _ _ _ hom
 
 
+  --apply this at psm
+
+  --have foo := @Inducing.pseudoMetrizableSpace X
+  --let MetrizableSpace X := @TopologicalSpace.metrizableSpaceMetric X
+  --rw [induced_eq] at induced
+  --refine ⟨?_⟩
+  --hom.inducing.metrizableSpace
+  --rw [Homeomorph.inducing this]
+  --#check @TopologicalSpace.MetrizableSpace.toPseudoMetrizableSpace (kopio X gs gs_sep gs_bdd) _ _
+  #check @Inducing.pseudoMetrizableSpace -- X (kopio X gs gs_sep gs_bdd) _ _ _ hom
   sorry
+/-
+letI : PseudoMetricSpace X := TopologicalSpace.pseudoMetrizableSpacePseudoMetric X
+  (homeomorph_probabilityMeasure_levyProkhorov (Ω := X)).inducing.pseudoMetrizableSpace
+-/
 
 #check Set.range gs
 #check Set.SeparatesPoints (Set.range gs)
@@ -496,7 +516,8 @@ variable (x y : X)
 #check TopologicalSpace.MetrizableSpace
 #check TopologicalSpace.MetrizableSpace X
 #check MeasureTheory.LevyProkhorov
-#check Summable
+#check @Inducing.pseudoMetrizableSpace X (kopio X gs gs_sep gs_bdd) _ _ _
+#check Homeomorph.induced_eq
 
 
 end Metrizability_lemma
@@ -507,11 +528,11 @@ section Seq_Banach_Alaoglu
 variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace ℂ V]
 variable [TopologicalSpace.SeparableSpace V]
 variable (K : Set (WeakDual ℂ V)) (K_cpt : IsCompact K)
-
+/-
 example (ϕ : WeakDual ℂ V) (v : V) : False := by
   set a := ϕ v
 
-  sorry
+  sorry-/
 /- There exists a sequence of continuous functions that separates points on V*. -/
 lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
   set vs := TopologicalSpace.denseSeq V
@@ -521,8 +542,6 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuou
   · refine ⟨?h.left, ?h.right⟩
     · exact fun n ↦ continuous_const
     · intro x y x_ne_y
-
-
       sorry
 
 #check TopologicalSpace.exists_countable_dense
@@ -551,29 +570,15 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
     unfold_let
     have ⟨h1, h2, h3⟩ := @exists_gs V _ _ _ K
     letI f : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ h1 n (ϕ : WeakDual ℂ V)
-    have : ∀ a : ℕ, (fun n ϕ ↦ gs n ↑ϕ) a = (fun ϕ ↦ gs a ↑ϕ) := by exact fun a ↦ rfl
-    simp
+    have subst : ∀ a : ℕ, (fun n ϕ ↦ gs n ↑ϕ) a x ≠ (fun n ϕ ↦ gs n ↑ϕ) a y → gs a x ≠ gs a y := by
+      exact fun a a ↦ a
+    simp only [subst]
+    have : (∃ f ∈ Set.range gs, f x ≠ f y) → ∃ a, gs a ↑x ≠ gs a ↑y := by
+      simp only [Set.mem_range, ne_eq, exists_exists_eq_and, imp_self]
+    apply this
+    apply gs_sep
+    exact Subtype.coe_ne_coe.mpr x_ne_y
 
-
-    sorry
-
-
-    --have gs_sep2 : ∃n, gs n (x:↑K) ≠ gs n (y:↑K) := by
-
-      --sorry
-    /-have hs_sep : (Set.range hs).SeparatesPoints := by
-      unfold_let
-      intro x y xny
-      refine Set.exists_range_iff.mpr ?_
-      sorry-/
-    --dsimp
-    --exact hs_sep
-
-
-
-
-
-    --have exists_sep : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), Set.SeparatesPoints (Set.range gs) := by
 #check X_metrizable
 #check Continuous.restrict
 #check @WeakDual.toNormedDual ℂ _ V _ _
@@ -631,3 +636,14 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
 #check subset_metrizable
 
 end Seq_Banach_Alaoglu
+
+section inducing
+variable (X Y : Type*) [TopologicalSpace X] [TopologicalSpace Y]
+theorem _root_.Inducing.MetrizableSpace [TopologicalSpace.MetrizableSpace Y] {f : X → Y}
+    (hf : Inducing f) : TopologicalSpace.MetrizableSpace X := by
+
+    sorry
+
+
+
+end inducing
