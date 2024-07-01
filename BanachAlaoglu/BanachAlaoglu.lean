@@ -5,37 +5,36 @@ section Seq_cpt_continuity
 
 --variable (ys : ℕ → f '' K)
 
-
 lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
     (hf : SeqContinuous f) {K : Set X} (hK : IsSeqCompact K) : IsSeqCompact (f '' K) := by
   rw [IsSeqCompact]
   intro ys hy
   simp [Set.mem_image] at hy
-  simp only [Set.mem_image, exists_exists_and_eq_and]
+  have n := ℕ
+  --simp only [Set.mem_image, exists_exists_and_eq_and]
+  have xs := ℕ → X --:= fun n ↦ f ⁻¹' (ys n)
+  --have := ∀ n : ℕ, xs n ∈ K ∧ f (xs n) = ys n
+  --obtain ⟨xs, hx⟩ := hy
+  have hxs :  ∀ x : ℕ → X, (∀ (n : ℕ), x n ∈ K) → ∃ a ∈ K, ∃ φ : ℕ → ℕ,
+      StrictMono φ ∧ Filter.Tendsto (x ∘ φ) Filter.atTop (nhds a) := by
+    exact fun ⦃x⦄ a ↦ hK a
 
+  --hxs xs
+  --specialize hxs xs
+  --obtain ⟨x, n, xn⟩ := hxs
+  --let foo := ∀ n, f (xs n) = ys n
+  --have : ∀ n : ℕ, xs n ∈ K := by sorry
+  --simp only [Set.mem_image, exists_exists_and_eq_and]
+  --have := hxs this
+  --obtain ⟨a, ha, ϕ, h⟩ := this
+  --use a, ha, ϕ
+  --have : ∀ φ : ℕ → ℕ, ∀ n : ℕ, ys ∘ φ = ((fun n ↦ f (xs n)) ∘ φ) := by
+    --intro phi
+    --simp only [forall_const]
 
-  sorry
-
-  --obtain ⟨n, x, hx⟩ := hy
-  --set n := ℕ
-  --specialize hy n
-
-  --refine bex_def.mp ?_
-  --obtain ⟨n, hn⟩ := hy n
- -- have xs : ℕ → X := ∀ n : ℕ, xs n = (f ⁻¹' ys n)
-  --have y := Set Y
-
-  --have inv := @Function.invFun X Y _ f
-  --let xs : ℕ → X := fun n ↦ inv (ys n)
-  --have seq_cpt_k : SeqCompactSpace K := by
     --sorry
- -- have foo := @IsSeqCompact.subseq_of_frequently_in X _ K hK xs
-  --obtain ⟨a⟩
-
-  --have inv : ℕ → Y → X := fun n ↦ fun ys n ↦ f ⁻¹' (ys n)
-  -- have foo : ∀ n : ℕ, f (xs n)
-
-  --have inv : ℕ → K := fun n ↦ f ⁻¹' (ys n)
+  sorry
+#check Filter.tendsto_of_seq_tendsto
 
 --#check Filter.Tendsto (ys ∘ φ) Filter.atTop (nhds a)
 --#check
@@ -84,6 +83,13 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
     rw [ourMetric] at sum
 
     have sum_zero : ∑' n, (1/2)^n * ‖gs n x - gs n y‖  = 0 → ∀ n, (1/2)^n * ‖gs n x - gs n y‖  = 0 := by
+      have tsum_zero (g : ℕ → ℝ) (h : ∀ (i : ℕ), g i ≥ 0) (h' : Summable g) :
+          ∑' (i : ℕ), g i = 0 ↔ ∀ (i : ℕ), g i = 0 := by
+        calc
+          _ ↔ HasSum g 0 := (Summable.hasSum_iff h').symm
+          _ ↔ g = 0 := hasSum_zero_iff_of_nonneg h
+          _ ↔ _ := Function.funext_iff
+
       intro sum
       let f := fun n ↦ (1/2)^n * ‖gs n x - gs n y‖
       have summable_metric : Summable f := by
@@ -118,99 +124,38 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
         refine mul_nonneg ?ha (this n)
         norm_num
 
-      have tsum_pos := @tsum_pos ℕ  ℝ _ _ _ _ f summable_metric terms_pos
-      have tsum_pos2 : ∀ (i : ℕ), 0 < f i → 0 < ∑' (i : ℕ), f i := by
-        exact fun i a ↦ tsum_pos i a
-
-      have con : (∀ (i : ℕ), ∑' (i : ℕ), f i ≤ 0 → f i ≤ 0) ↔ (∀ (i : ℕ), 0 < f i → 0 < ∑' (i : ℕ), f i) := by
-        constructor
-        · exact fun a i a ↦ tsum_pos i a
-        · exact fun a i a ↦ le_imp_le_of_lt_imp_lt (tsum_pos i) a
-      rw [← con] at tsum_pos2
-
-      have zero_if_nonpos_pos : ∀ a : ℝ, ((0 <= a) ∧ (a <= 0)) ↔ a = 0 := by
-        intro a
-        constructor
-        · intro n
-          linarith
-        · intro a
-          exact le_antisymm_iff.mp (id (Eq.symm a))
-      --simp [terms_pos]
-
-      --simp only [one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff', OfNat.ofNat_ne_zero,
-        --ne_eq, false_and, norm_eq_zero, false_or]
-
-
-      sorry
-
-      --contrapose! tsum_zero
-      /-have foo : (¬(∀ (i : ℕ), 0 < f i → 0 < ∑' (i : ℕ), f i)) = (∀ (i : ℕ), 0 = ∑' (i : ℕ), f i → 0 = f i) := by
-        refine propext ?_
-        constructor
-        · intro h1
-          exact fun i a ↦ False.elim (h1 tsum_zero)
-        · intro h1
-          intro h2
--/
-/-
-      have foo2 : ∀ (i : ℕ), 0 = ∑' (i : ℕ), f i → 0 = f i := by
-        contrapose! tsum_zero
-        rw [foo]
-        exact tsum_zero
-        sorry
--/
-      --contrapose tsum_zero
-      --rw [foo]
-     -- sorry
-      --contrapose tsum_zero
-      --:= @tsum_eq_zero_iff ℕ ℝ _ _ _ (fun n ↦ 1/2^n * |gs n x - gs n y|) summable_metric
-
-    apply sum_zero at sum
-    -- gs_sep
-    have mul_zero : ∀ a b : ℝ , a * b = 0 ↔ a = 0 ∨ b = 0 := by
-      exact fun a b ↦ mul_eq_zero
-
-    have mul_const_eq_zero : ∀ (n : ℕ), (1 / 2) ^ n * ‖gs n x - gs n y‖ = 0 → ‖gs n x - gs n y‖  = 0 := by
-      intro n
-      intro sum
-      rw [mul_zero ((1 / 2) ^ n) (‖gs n x - gs n y‖)] at sum
-      have foo2 : ∀ n : ℕ, ((1: ℝ) / 2) ^n > 0 := by apply @pow_pos ℝ _ (1/2); norm_num
-      rcases sum with h1 | h2
-      · simp [foo2] at sum
-        exact inseparable_zero_iff_norm.mp (congrArg nhds (sum n))
-      · exact h2
-
-    have foo : ∀ n, ‖gs n x - gs n y‖  = 0 := by
-      intro n
-      apply mul_const_eq_zero
-      specialize sum n
+      have := (tsum_zero (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) terms_pos summable_metric).mp
+      apply this
       exact sum
 
+    apply sum_zero at sum
     simp at sum
     simp_rw [sub_eq_zero] at sum
-    have eq_sep : ∀ (n : ℕ), gs n x = gs n y → x = y := by
-      intro n
-      contrapose!
+    contrapose! sum
 
-      sorry
-      /-convert gs_sep
-      constructor
-      · exact fun a ↦ gs_sep
-      ·
-        sorry
-      -/
-
-    sorry
+    have : (∃ f ∈ Set.range gs, f x ≠ f y) → ∃ a, gs a ↑x ≠ gs a ↑y := by
+      simp only [Set.mem_range, ne_eq, exists_exists_eq_and, imp_self]
+    apply this
+    apply gs_sep
+    exact sum
 
   · intro x_eq_y
     rw [ourMetric, x_eq_y]
     simp
+
+example (g : ℕ → ℝ) (h : ∀ (i : ℕ), g i ≥ 0) (h' : Summable g) :
+    ∑' (i : ℕ), g i = 0 ↔ ∀ (i : ℕ), g i = 0 := by
+  calc
+    _ ↔ HasSum g 0 := (Summable.hasSum_iff h').symm
+    _ ↔ g = 0 := hasSum_zero_iff_of_nonneg h
+    _ ↔ _ := Function.funext_iff
 
 #check tsum_eq_zero_iff
 #check HasSum.summable
 #check HasSum
 #check mul_eq_zero
 #check @pow_pos ℝ _ (1/2)
+#check gs_sep
 
 
 lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
@@ -222,7 +167,6 @@ lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
   rw [tsum_congr]
   intro b
   rw [abs_eq]
-
 
 lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
   intro x y z
@@ -241,7 +185,6 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
     · refine pow_pos ?refine_1.H n
       linarith
     · exact norm_add_le (gs n x - gs n y) (gs n y - gs n z)
-
 
   have tsum_tri_ineq : ∑' (n : ℕ), (1 / 2) ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤
       ∑' (n : ℕ), ((1 / 2) ^ n * ‖gs n x - gs n y‖ + (1 / 2) ^ n * ‖gs n y - gs n z‖) := by
@@ -331,7 +274,6 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 
         exact summable_if_bounded this
 
-
   have pm : ∀ n : ℕ, ‖gs n x + -gs n y‖ = ‖gs n x -gs n y‖ := by simp[sub_eq_add_neg]
 
   have fsummable : Summable fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖ := by
@@ -401,7 +343,7 @@ noncomputable def ourMetricSpace : MetricSpace X where
   dist := ourMetric gs
   dist_self := by
     intro x
-    exact (@ourMetric_self_iff X 𝕜 _ gs gs_bdd x x ).mpr rfl
+    exact (@ourMetric_self_iff X 𝕜 _ gs gs_sep gs_bdd x x ).mpr rfl
   dist_comm := by
     intro x y
     exact (@ourMetric_comm X 𝕜 _ gs x y)
@@ -411,7 +353,7 @@ noncomputable def ourMetricSpace : MetricSpace X where
   edist_dist := by simp [← ENNReal.ofReal_coe_nnreal]
   eq_of_dist_eq_zero := by
     intro x y
-    exact (@ourMetric_self_iff X 𝕜 _ gs gs_bdd x y).mp
+    exact (@ourMetric_self_iff X 𝕜 _ gs gs_sep gs_bdd x y).mp
 
 def kopio (X :Type*) (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) := X
 
@@ -421,15 +363,18 @@ def kopio.mk (X :Type*) (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints 
 def kopio.toOrigin (X :Type*) (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) :
     kopio X gs gs_sep gs_bdd → X := id
 
-noncomputable instance : MetricSpace (kopio X gs gs_sep gs_bdd) := ourMetricSpace gs gs_bdd
+noncomputable instance : MetricSpace (kopio X gs gs_sep gs_bdd) := ourMetricSpace gs gs_sep gs_bdd
 
 
 lemma cont_kopio_mk (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) :
     Continuous (kopio.mk X gs gs_sep gs_bdd) := by
   dsimp [kopio.mk]
-  refine continuous_id_iff_le.mpr ?_
-  refine isOpen_implies_isOpen_iff.mp ?_
-  intro s openS
+  refine { isOpen_preimage := ?isOpen_preimage }
+  intro hs hos
+
+  --refine isOpen_coinduced.mp ?isOpen_preimage.a
+
+
 
 
   --‹TopologicalSpace X›
@@ -449,18 +394,16 @@ lemma cont_kopio_mk (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ �
 lemma cont_kopio_toOrigin (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) :
     Continuous (kopio.toOrigin X gs gs_sep gs_bdd) := by
     rw [kopio.toOrigin]
-
-    --rw[kopio]
-    refine SeqContinuous.continuous ?_
-    intro h1 h2 h3
-
-
+    refine continuous_id_of_le ?_
+    refine le_of_nhds_le_nhds ?h
+    intro hk
 
     sorry
 
 #check continuous_id
 #check TopologicalSpace.coinduced id ‹TopologicalSpace X›
 #check UniformSpace.toTopologicalSpace
+#check @UniformSpace.toTopologicalSpace_mono X
 
 noncomputable def homeomorph_OurMetric :
   X ≃ₜ kopio X gs gs_sep gs_bdd where
@@ -482,7 +425,7 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [TopologicalSpace X] [Com
     (gs_sep : Set.SeparatesPoints (Set.range gs)): --(gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) : --gs_bdd ei pitäisi tarvita
     TopologicalSpace.MetrizableSpace X := by
   --refine ⟨?_⟩
-  have hom := @homeomorph_OurMetric X 𝕜 _ _ _ gs gs_sep  --gs_bdd
+  have hom := @homeomorph_OurMetric X 𝕜 _ _ _ gs gs_sep --gs_bdd
   --have induced_eq := @Homeomorph.induced_eq X (kopio X gs gs_sep gs_bdd) _ _ hom
   --have induced := @inducing_induced X (kopio X gs gs_sep gs_bdd) _ hom
   --have psm := @TopologicalSpace.MetrizableSpace.toPseudoMetrizableSpace (kopio X gs gs_sep gs_bdd) _ _
@@ -537,14 +480,25 @@ example (ϕ : WeakDual ℂ V) (v : V) : False := by
 lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
   set vs := TopologicalSpace.denseSeq V
   set gs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
-  refine Exists.intro ?w ?h
+  --have ⟨h1, h2, h3⟩ := ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs)
+  set gs2 : ℕ → WeakDual ℂ V → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
+  use gs2
+  constructor
+  · exact fun n ↦ WeakDual.eval_continuous (vs n)
+  · intro w y w_ne_y
+
+    sorry
+
+
+  /-refine Exists.intro ?w ?h
   · exact fun a a ↦ Complex.I
   · refine ⟨?h.left, ?h.right⟩
     · exact fun n ↦ continuous_const
     · intro x y x_ne_y
       sorry
-
-#check TopologicalSpace.exists_countable_dense
+-/
+#check @TopologicalSpace.exists_countable_dense (WeakDual ℂ V) _
+#check @DenseRange.equalizer
 --#check Continuous.comp (WeakDual.eval_continuous (vs n)) continuous_subtype_val
 
 
@@ -574,17 +528,10 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
 #check Continuous.restrict
 #check @WeakDual.toNormedDual ℂ _ V _ _
 #check Subalgebra.SeparatesPoints
-/-have phi_c : Continuous fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n) := by
-      exact WeakDual.eval_continuous (vs n)-/
-/-have := @Continuous.comp K (WeakDual ℂ V) ℂ _ _ _ (fun ψ ↦ ψ) (fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)) phi_c (by exact
-      continuous_subtype_val)-/
 
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ) :
     IsSeqCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
-
-  --let B := (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
-  --let ι : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) → WeakDual ℂ V := fun ϕ ↦ ϕ
 
   have b_isCompact : IsCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
     apply WeakDual.isCompact_closedBall
@@ -605,9 +552,7 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
   have seq_incl := @SeqCompactSpace.range (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
                   (WeakDual ℂ V) _ _ _ (fun φ ↦ φ) seq_cont_phi
   convert seq_incl
-  --constructor
-  --· exact fun a ↦ seq_incl
-  --· rw [seqCompactSpace_iff]
+
 
 
 
@@ -630,14 +575,12 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
 #check subset_metrizable
 
 end Seq_Banach_Alaoglu
-
+/-
 section inducing
 variable (X Y : Type*) [TopologicalSpace X] [TopologicalSpace Y]
 theorem _root_.Inducing.MetrizableSpace [TopologicalSpace.MetrizableSpace Y] {f : X → Y}
     (hf : Inducing f) : TopologicalSpace.MetrizableSpace X := by
 
     sorry
-
-
-
 end inducing
+-/
