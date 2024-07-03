@@ -1,6 +1,6 @@
 
 import Mathlib
-set_option maxHeartbeats 1000000
+--set_option maxHeartbeats 1000000
 
 section assumption_on_the_normed_field
 open Function
@@ -25,9 +25,6 @@ lemma bdd_squeeze (c : 𝕜) : ∀ c : 𝕜, ‖squeeze 𝕜 c‖ ≤ 1 := by
 --example (a b : ℝ) (h1 : 0 ≤ a) (h2 : 0 ≤ b) (h3 : a ≤ b) : a / b ≤ 1 := by
   --exact div_le_one_of_le h3 h2
 --example (a : ℝ) (h1 : a ≤ 1) (h2 : 0 ≤ a) : |a| ≤ 1 := by
-
-
-
 
 noncomputable instance : IsSensiblyNormed ℝ where
   squeeze' : ℝ → ℝ := (fun a ↦ a / (1 + ‖a‖))
@@ -93,47 +90,75 @@ noncomputable instance : IsSensiblyNormed ℝ where
       simp only [Real.norm_eq_abs, norm_inv]
       have : |x / (1 + |x|)| ≤ 1 := by
         have le_one : x / (1 + |x|) ≤ 1 := by exact h x
-        have ge_minus_one : -1 ≤ x / (1 + |x|) := by
+        have x_le_opa : x ≤ 1 + |x| := by
+          apply le_add_of_nonneg_of_le
+          · linarith
+          · exact le_abs_self x
+        have := @abs_le_one_iff_mul_self_le_one ℝ _ (x / (1 + |x|))
+        have : x / (1 + |x|) * (x / (1 + |x|)) ≤ 1 ↔ x ≤ 1 + |x| := by
+
+          sorry
+
+        sorry
+      sorry
+        --simp only [abs_le]
+        --exact ⟨ge_minus_one, h x⟩
+      --exact this
+    --exact this c
+
+    sorry
+/- have ge_minus_one : -1 ≤ x / (1 + |x|) := by
           have : x ≤ 1 + |x| := by
             apply le_add_of_nonneg_of_le
             · linarith
             · exact le_abs_self x
+          have : x ≤ 1 + |x| → |x / (1 + |x|)| ≤ 1 := by
 
-
-
-          sorry
-        simp only [abs_le]
-        exact ⟨ge_minus_one, h x⟩
-      exact this
-    exact this c
-
+            sorry
+        -/
 noncomputable instance : IsSensiblyNormed ℂ where
   squeeze' : ℂ → ℂ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
-    have foo : Continuous (fun a : ℂ ↦ ‖a‖) := by exact continuous_norm
-    have foo2 : Continuous (fun a : ℂ ↦ (1 + ‖a‖)) := by
+    have foo : Continuous (fun a : ℂ ↦ (‖a‖ : ℂ) ) := by
+      norm_num
+      have := Complex.continuous_abs
+
+      sorry
+    have foo2 : Continuous (fun a : ℂ ↦ ((1 : ℂ) + ‖a‖)) := by
       exact Continuous.add (by exact continuous_const) (by exact foo)
     --have : Continuous (fun a:ℝ  ↦ 1) := by exact?
-    have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ‖a‖) x ≠ 0) := by
+    have nonzero : (∀ (x : ℂ), (fun (a : ℂ) ↦ ((1 : ℂ) + ‖a‖)) x ≠ 0):= by
       intro x
-      have lt : ∀ a : ℂ, 0 < 1 + ‖a‖ := by
+      simp only [Complex.norm_eq_abs]
+      /-have lt : ∀ a : ℂ, 0 < ((1 : ℂ)  + ‖a‖) := by
         simp only [Complex.norm_eq_abs]
         intro a
         apply lt_add_of_lt_of_nonneg
         · linarith
         · exact AbsoluteValue.nonneg Complex.abs a
-
-      have : ∀ a : ℂ, 1 + ‖a‖ ≠ 0 := by
+-/
+      have : ∀ a : ℂ, (1 : ℂ) + ‖a‖ ≠ 0 := by
         intro a
-        specialize lt a
-        have : 0 < 1 + ‖a‖ → 1 + ‖a‖ ≠ 0 := by exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
-        exact this lt
+        simp only [Complex.norm_eq_abs]
+        have : 0 ≤ ↑(Complex.abs a)  := by exact AbsoluteValue.nonneg Complex.abs a
+        have lt : 0 < 1 + ↑(Complex.abs a) := by
+          apply add_pos_of_pos_of_nonneg
+          · norm_num
+          · exact this
+        have : 0 < 1 + ↑(Complex.abs a) → 1 + ↑(Complex.abs a) ≠ 0 := by
+          exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
+        have := this lt
+
+        --specialize lt a
+        --have : 0 ≤ ((1 : ℂ) + ↑(Complex.abs (a : ℂ)))  → (1 : ℂ) + ‖a‖ ≠ 0 := by sorry--exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
+        --exact this lt
+        sorry
       apply this
     have : Continuous (fun a : ℂ ↦ a) := continuous_id
 
-    --have := @Continuous.div ℂ ℂ _ _ _ _ (fun a ↦ a) (fun a : ℂ ↦ (1 + ‖a‖)) _ this foo2 nonzero
+    have := @Continuous.div ℂ ℂ _ _ _ _ (fun a ↦ a) (fun a : ℂ ↦ (1 + ‖a‖)) _ this foo2 --nonzero
+    exact this nonzero
 
-    sorry
 
 
   inj := by
@@ -146,6 +171,15 @@ noncomputable instance : IsSensiblyNormed ℂ where
     have foo2 : ∀ x : ℂ, 0 ≤ Complex.abs (1 + ↑(Complex.abs x)) := by
       norm_num
     have foo4 : ∀ x : ℂ, Complex.abs x ≤ Complex.abs (1 + ↑(Complex.abs x)) := by
+      intro x
+      have : Complex.abs x ≤ (1 + ↑(Complex.abs x)) := by norm_num
+      have : (1 + ↑(Complex.abs x)) ≤ Complex.abs ((1:ℝ ) + (↑(Complex.abs x) : ℝ)) := by
+        have (a : ℝ) : a ≤ Complex.abs (a) := by
+          simp only [Complex.abs_ofReal]
+          exact le_abs_self a
+        --exact this (1 + ↑(Complex.abs x))
+        sorry
+
       sorry
     apply div_le_one_of_le
     · exact foo4 c
@@ -163,9 +197,7 @@ section Seq_cpt_continuity
 
 lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
     (hf : SeqContinuous f) {K : Set X} (hK : IsSeqCompact K) : IsSeqCompact (f '' K) := by
-  rw [IsSeqCompact]
   intro ys hy
-  simp [Set.mem_image] at hy
   let xs := fun n ↦ Exists.choose (hy n)
   have hxs : ∀ n, xs n ∈ K ∧ f (xs n) = ys n := fun n ↦ Exists.choose_spec (hy n)
   simp [forall_and] at hxs
@@ -182,7 +214,7 @@ lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y]
   · have : Filter.Tendsto (xs ∘ phi) Filter.atTop (nhds a) ↔ Filter.Tendsto (ys ∘ phi) Filter.atTop (nhds (f a)) := by
       constructor
       · exact fun a_1 ↦ Filter.Tendsto.congr (fun x ↦ hxr (phi x)) (hf a_1)
-      · intro h
+      · intro
         exact hx.2
     rw [← this]
     exact hx.2
@@ -536,6 +568,7 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (
 
     sorry
   sorry
+#check @continuous_tsum ℕ X 𝕜 _
 
 lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
     dist (kopio.mk X gs gs_sep gs_bdd p.1) (kopio.mk X gs gs_sep gs_bdd p.2)) := by
@@ -580,12 +613,8 @@ lemma cont_kopio_mk (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ �
 lemma cont_kopio_toOrigin (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ → X → 𝕜)
     (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_bdd : ∀ n x, ‖gs n x‖ ≤ 1) :
     Continuous (kopio.toOrigin X gs gs_sep gs_bdd) := by
-    rw [kopio.toOrigin]
-    refine continuous_id_of_le ?_
-    refine le_of_nhds_le_nhds ?h
-    intro hk
 
-    sorry
+  sorry
 
 #check continuous_id
 #check TopologicalSpace.coinduced id ‹TopologicalSpace X›
@@ -637,12 +666,13 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜] [
 
   have hom := @homeomorph_OurMetric X 𝕜 _ _ _ hs hs_cont hs_sep hs_bdd
 
+  have kopio_mspace := MetricSpace (kopio X hs hs_sep hs_bdd)
+
   have induced_eq := @Homeomorph.induced_eq X (kopio X hs hs_sep hs_bdd) _ _ hom
   have induced := @inducing_induced X (kopio X hs hs_sep hs_bdd) _ hom
   --have psm := @TopologicalSpace.MetrizableSpace.toPseudoMetrizableSpace (kopio X hs hs_sep hs_bdd) _ _
   --have := @Inducing.pseudoMetrizableSpace X (kopio X hs hs_sep hs_bdd) _ _ _ hom
-
-
+  have := @Homeomorph.inducing X (kopio X hs hs_sep hs_bdd) _ _ hom
   --apply this at psm
 
   --have foo := @Inducing.pseudoMetrizableSpace X
@@ -682,36 +712,27 @@ section Seq_Banach_Alaoglu
 variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace ℂ V]
 variable [TopologicalSpace.SeparableSpace V]
 variable (K : Set (WeakDual ℂ V)) (K_cpt : IsCompact K)
-/-
-example (ϕ : WeakDual ℂ V) (v : V) : False := by
-  set a := ϕ v
 
-  sorry-/
 /- There exists a sequence of continuous functions that separates points on V*. -/
 lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
   set vs := TopologicalSpace.denseSeq V
   set gs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
-  --have ⟨h1, h2, h3⟩ := ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs)
   set gs2 : ℕ → WeakDual ℂ V → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
   use gs2
   constructor
   · exact fun n ↦ WeakDual.eval_continuous (vs n)
   · intro w y w_ne_y
+    contrapose! w_ne_y
+    simp only [Set.forall_mem_range] at w_ne_y
+    have : Set.EqOn (⇑w) (⇑y) (Set.range vs) := by
+      simp only [Set.eqOn_range]
+      exact (Set.eqOn_univ (⇑w ∘ vs) (⇑y ∘ vs)).mp fun ⦃x⦄ _ ↦ w_ne_y x
+    have := @Continuous.ext_on ℂ V _ _ _ (Set.range vs) (TopologicalSpace.denseRange_denseSeq V) w y (map_continuous w) (map_continuous y) this
+    simp at this
+    exact this
 
-    sorry
-
-
-  /-refine Exists.intro ?w ?h
-  · exact fun a a ↦ Complex.I
-  · refine ⟨?h.left, ?h.right⟩
-    · exact fun n ↦ continuous_const
-    · intro x y x_ne_y
-      sorry
--/
 #check @TopologicalSpace.exists_countable_dense (WeakDual ℂ V) _
 #check @DenseRange.equalizer
---#check Continuous.comp (WeakDual.eval_continuous (vs n)) continuous_subtype_val
-
 
 
 /- A compact subset of the dual V* of a separable space V is metrizable. -/
