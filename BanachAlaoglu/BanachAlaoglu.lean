@@ -30,12 +30,13 @@ lemma bdd_squeeze (c : 𝕜) : ∀ c : 𝕜, ‖squeeze 𝕜 c‖ ≤ 1 := by
 
 
 noncomputable instance : IsSensiblyNormed ℝ where
-  squeeze' : ℝ → ℝ := (fun a ↦ 1 / (1 + ‖a‖))
+  squeeze' : ℝ → ℝ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
     have foo : Continuous (fun a : ℝ ↦ ‖a‖) := by exact continuous_norm
     have foo2 : Continuous (fun a : ℝ ↦ (1 + ‖a‖)) := by
       exact Continuous.add (by exact continuous_const) (by exact foo)
     --have : Continuous (fun a:ℝ  ↦ 1) := by exact?
+
     have nonzero : (∀ (x : ℝ), (fun a ↦ 1 + ‖a‖) x ≠ 0) := by
       intro x
       have lt : ∀ a : ℝ, 0 < 1 + ‖a‖ := by
@@ -46,37 +47,63 @@ noncomputable instance : IsSensiblyNormed ℝ where
         have : 0 < 1 + ‖a‖ → 1 + ‖a‖ ≠ 0 := by exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
         exact this lt
       apply this
-
-    exact @Continuous.div ℝ ℝ _ _ _ _ (fun a ↦ 1) (fun a : ℝ ↦ (1 + ‖a‖)) _ continuous_const foo2 nonzero
+    have : Continuous (fun a : ℝ ↦ a) := continuous_id
+    exact @Continuous.div ℝ ℝ _ _ _ _ (fun a ↦ a) (fun a : ℝ ↦ (1 + ‖a‖)) _ this foo2 nonzero
 
   inj := by
-    have foo : ∀ x y: ℝ, 1/(1 + ‖x‖) = 1/(1 + ‖y‖) → (x = y) := by
+    have foo : ∀ x y: ℝ, x/(1 + ‖x‖) = y/(1 + ‖y‖) → (x = y) := by
       intro x y
       intro h
+      simp at h
+      have lt : ∀ a : ℝ, 0 < 1 + ‖a‖ := by
+        simp [add_comm, add_pos_of_nonneg_of_pos]
+      have : ∀ a : ℝ, 1 + ‖a‖ ≠ 0 := by
+        intro a
+        specialize lt a
+        have : 0 < 1 + ‖a‖ → 1 + ‖a‖ ≠ 0 := by exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
+        exact this lt
+      --contrapose! h
+      have xnz : (1 + |x|) ≠ 0 := by exact this x
+      have ynz : (1 + |y|) ≠ 0 := by exact this y
+      have := @mul_eq_mul_of_div_eq_div ℝ _ (1 + |x|) (1 + |y|) x y xnz ynz h
+      --have := @div_eq_iff_eq_mul ℝ _ --x (1 + |x|) (y/(1 + |y|))
+      --have := (@div_eq_div_iff_mul_eq_mul ℝ _ x (1 + |x|) y (1 + |y|))
+
+
       sorry
     exact foo
-
+ --#check CommGroup ℝ
   bdd := by
-    have h : ∀ x : ℝ, 1 / (1 + ‖x‖) ≤ 1 := by
+    have h : ∀ x : ℝ, x / (1 + ‖x‖) ≤ 1 := by
       intro x
-      have : 1 ≤ 1 + ‖x‖ := by
-        simp only [Real.norm_eq_abs, le_add_iff_nonneg_right, abs_nonneg]
-      have : 1 / (1 + ‖x‖) ≤ 1 := by
+      have : x ≤ 1 + ‖x‖ := by
+        simp only [Real.norm_eq_abs]
+        apply le_add_of_nonneg_of_le
+        · linarith
+        · exact le_abs_self x
+      have : x / (1 + ‖x‖) ≤ 1 := by
         apply div_le_one_of_le
         · exact this
         · exact @add_nonneg ℝ _ _ _ 1 ‖x‖ (by linarith) (by norm_num)
       exact this
 
     intro c
-    have : ∀ x : ℝ , ‖1 / (1 + ‖x‖)‖ ≤ 1 := by
+    have : ∀ x : ℝ , ‖x / (1 + ‖x‖)‖ ≤ 1 := by
       intro x
       simp only [Real.norm_eq_abs, norm_inv]
-      have : |1 / (1 + |x|)| ≤ 1 := by
-        have le_one : 1 / (1 + |x|) ≤ 1 := by exact h x
-        have pos : 0 ≤ 1 / (1 + |x|) := by
-          simp [add_nonneg]
-        rw [(@abs_eq_self ℝ _ (1 / (1 + |x|))).mpr pos]
-        exact le_one
+      have : |x / (1 + |x|)| ≤ 1 := by
+        have le_one : x / (1 + |x|) ≤ 1 := by exact h x
+        have ge_minus_one : -1 ≤ x / (1 + |x|) := by
+          have : x ≤ 1 + |x| := by
+            apply le_add_of_nonneg_of_le
+            · linarith
+            · exact le_abs_self x
+
+
+
+          sorry
+        simp only [abs_le]
+        exact ⟨ge_minus_one, h x⟩
       exact this
     exact this c
 
@@ -84,7 +111,7 @@ noncomputable instance : IsSensiblyNormed ℂ where
   squeeze' : ℂ → ℂ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
     have foo : Continuous (fun a : ℂ ↦ ‖a‖) := by exact continuous_norm
-    have foo2 : Continuous (fun a : ℂ ↦ (1 + ↑‖a‖)) := by
+    have foo2 : Continuous (fun a : ℂ ↦ (1 + ‖a‖)) := by
       exact Continuous.add (by exact continuous_const) (by exact foo)
     --have : Continuous (fun a:ℝ  ↦ 1) := by exact?
     have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ‖a‖) x ≠ 0) := by
@@ -104,12 +131,27 @@ noncomputable instance : IsSensiblyNormed ℂ where
       apply this
     have : Continuous (fun a : ℂ ↦ a) := continuous_id
 
-    --exact @Continuous.div ℂ ℂ _ _ _ _ (fun a ↦ a) (fun a : ℂ ↦ (1 + ‖a‖)) _ this foo2 nonzero
+    --have := @Continuous.div ℂ ℂ _ _ _ _ (fun a ↦ a) (fun a : ℂ ↦ (1 + ‖a‖)) _ this foo2 nonzero
+
     sorry
 
 
-  inj := by sorry
-  bdd := by sorry
+  inj := by
+    intro x y x_eq_y
+    norm_num at x_eq_y
+    sorry
+  bdd := by
+    intro c
+    norm_num
+    have foo2 : ∀ x : ℂ, 0 ≤ Complex.abs (1 + ↑(Complex.abs x)) := by
+      norm_num
+    have foo4 : ∀ x : ℂ, Complex.abs x ≤ Complex.abs (1 + ↑(Complex.abs x)) := by
+      sorry
+    apply div_le_one_of_le
+    · exact foo4 c
+    · exact foo2 c
+
+
 
 end assumption_on_the_normed_field
 
@@ -124,48 +166,36 @@ lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y]
   rw [IsSeqCompact]
   intro ys hy
   simp [Set.mem_image] at hy
-  --have hy5 := hy 5
-  --let x5 := Exists.choose hy5
-  --have hx5 : x5 ∈ K ∧ f x5 = ys 5 := Exists.choose_spec hy5
-  --have hyn := fun n ↦ hy n
   let xs := fun n ↦ Exists.choose (hy n)
   have hxs : ∀ n, xs n ∈ K ∧ f (xs n) = ys n := fun n ↦ Exists.choose_spec (hy n)
-  --:= fun n ↦ f ⁻¹' (ys n)
-  --have := ∀ n : ℕ, xs n ∈ K ∧ f (xs n) = ys n
-  --obtain ⟨xs, hx⟩ := hy
   simp [forall_and] at hxs
-
+  obtain ⟨hxl, hxr⟩ := hxs
   have hx :  ∀ x : ℕ → X, (∀ (n : ℕ), x n ∈ K) → ∃ a ∈ K, ∃ φ : ℕ → ℕ,
       StrictMono φ ∧ Filter.Tendsto (x ∘ φ) Filter.atTop (nhds a) := by
     exact fun ⦃x⦄ a ↦ hK a
-  specialize hx xs hxs.1
-  obtain ⟨a, ha, phi, hx⟩ := hx
+  specialize hx xs hxl
   simp only [Set.mem_image, exists_exists_and_eq_and]
-  use a
-  use ha
-  use phi
-  have hxr := hx.right
+  obtain ⟨a, ha, phi, hx⟩ := hx
+  use a, ha, phi
   constructor
-  · exact hx.left
-  ·
-    sorry
-  --obtain ⟨x, n, xn⟩ := hxs
-  --let foo := ∀ n, f (xs n) = ys n
-  --have : ∀ n : ℕ, xs n ∈ K := by sorry
-  --simp only [Set.mem_image, exists_exists_and_eq_and]
-  --have := hxs this
-  --obtain ⟨a, ha, ϕ, h⟩ := this
-  --use a, ha, ϕ
-  --have : ∀ φ : ℕ → ℕ, ∀ n : ℕ, ys ∘ φ = ((fun n ↦ f (xs n)) ∘ φ) := by
-    --intro phi
-    --simp only [forall_const]
+  · exact hx.1
+  · have : Filter.Tendsto (xs ∘ phi) Filter.atTop (nhds a) ↔ Filter.Tendsto (ys ∘ phi) Filter.atTop (nhds (f a)) := by
+      constructor
+      · exact fun a_1 ↦ Filter.Tendsto.congr (fun x ↦ hxr (phi x)) (hf a_1)
+      · intro h
+        exact hx.2
+    rw [← this]
+    exact hx.2
 
-    --sorry
 
 #check Filter.tendsto_of_seq_tendsto
 #check forall_const
 --#check Filter.Tendsto (ys ∘ φ) Filter.atTop (nhds a)
 --#check
+--have hy5 := hy 5
+  --let x5 := Exists.choose hy5
+  --have hx5 : x5 ∈ K ∧ f x5 = ys 5 := Exists.choose_spec hy5
+  --have hyn := fun n ↦ hy n
 
 example {X : Type*} [TopologicalSpace X] [SeqCompactSpace X] : IsSeqCompact (Set.univ : Set X) := by
   exact (seqCompactSpace_iff X).mp ‹SeqCompactSpace X›
@@ -503,6 +533,7 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (
   have : ∀ x y, Continuous (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) := by
     exact fun x y ↦ { isOpen_preimage := fun s a ↦ trivial }
   have : Continuous (fun (x, y) ↦ ourMetric gs x y) := by
+
     sorry
   sorry
 
