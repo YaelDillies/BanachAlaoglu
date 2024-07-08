@@ -17,6 +17,7 @@ lemma cont_squeeze : Continuous (squeeze 𝕜) := by
   exact ‹IsSensiblyNormed 𝕜›.cont
 
 lemma inj_squeeze : Injective (squeeze 𝕜) := by
+
   exact ‹IsSensiblyNormed 𝕜›.inj
 
 lemma bdd_squeeze (c : 𝕜) : ∀ c : 𝕜, ‖squeeze 𝕜 c‖ ≤ 1 := by
@@ -65,10 +66,13 @@ noncomputable instance : IsSensiblyNormed ℝ where
       have := @mul_eq_mul_of_div_eq_div ℝ _ (1 + |x|) (1 + |y|) x y xnz ynz h
       --have := @div_eq_iff_eq_mul ℝ _ --x (1 + |x|) (y/(1 + |y|))
       --have := (@div_eq_div_iff_mul_eq_mul ℝ _ x (1 + |x|) y (1 + |y|))
+      --contrapose! this
+      ring_nf at this
 
 
       sorry
     exact foo
+
  --#check CommGroup ℝ
   bdd := by
     have h : ∀ x : ℝ, x / (1 + ‖x‖) ≤ 1 := by
@@ -88,6 +92,11 @@ noncomputable instance : IsSensiblyNormed ℝ where
     have : ∀ x : ℝ , ‖x / (1 + ‖x‖)‖ ≤ 1 := by
       intro x
       simp only [Real.norm_eq_abs, norm_inv]
+      have : ∀ a b : ℝ, a ≤ b → a / b ≤ 1 := by
+        intro a b
+        intro a_le_b
+
+        sorry
       have : |x / (1 + |x|)| ≤ 1 := by
         have le_one : x / (1 + |x|) ≤ 1 := by exact h x
         have x_le_opa : x ≤ 1 + |x| := by
@@ -95,9 +104,25 @@ noncomputable instance : IsSensiblyNormed ℝ where
           · linarith
           · exact le_abs_self x
         have := @abs_le_one_iff_mul_self_le_one ℝ _ (x / (1 + |x|))
-        have : x / (1 + |x|) * (x / (1 + |x|)) ≤ 1 ↔ x ≤ 1 + |x| := by
+        have : (x / (1 + |x|)) * (x / (1 + |x|)) ≤ 1 ↔ x ≤ 1 + |x| := by
+          constructor
+          · exact fun a ↦ x_le_opa
+          · have : (x / (1 + |x|)) * (x / (1 + |x|)) = (x * x) / ( 1 + 2 * |x| + x * x) := by
+              ring_nf
+              simp only [inv_pow, mul_eq_mul_left_iff, inv_inj, ne_eq, OfNat.ofNat_ne_zero,
+                not_false_eq_true, pow_eq_zero_iff]
+              left
+              ring_nf
+              simp only [sq_abs]
+            simp [this]
+            intro _
+            have : x * x ≤ (1 + 2 * |x| + x * x) := by
+              norm_num
+              simp [add_nonneg]
+            --simp only []
 
-          sorry
+            sorry
+
 
         sorry
       sorry
@@ -105,8 +130,8 @@ noncomputable instance : IsSensiblyNormed ℝ where
         --exact ⟨ge_minus_one, h x⟩
       --exact this
     --exact this c
+    exact this c
 
-    sorry
 /- have ge_minus_one : -1 ≤ x / (1 + |x|) := by
           have : x ≤ 1 + |x| := by
             apply le_add_of_nonneg_of_le
@@ -116,12 +141,24 @@ noncomputable instance : IsSensiblyNormed ℝ where
 
             sorry
         -/
+example (a b c : ℝ) : (a * b)/(c * b) = a / c := by
+
+  sorry
+
 noncomputable instance : IsSensiblyNormed ℂ where
   squeeze' : ℂ → ℂ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
     have foo : Continuous (fun a : ℂ ↦ (‖a‖ : ℂ) ) := by
       norm_num
       have := Complex.continuous_abs
+      have : Continuous (fun a ↦ Complex.abs a) ↔ Continuous (fun a ↦ (Complex.abs a : ℂ )) := by
+        constructor
+        · intro _
+
+          sorry
+        · exact fun a ↦ this
+
+
 
       sorry
     have foo2 : Continuous (fun a : ℂ ↦ ((1 : ℂ) + ‖a‖)) := by
@@ -148,6 +185,15 @@ noncomputable instance : IsSensiblyNormed ℂ where
         have : 0 < 1 + ↑(Complex.abs a) → 1 + ↑(Complex.abs a) ≠ 0 := by
           exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
         have := this lt
+        have : -1 ≠ (↑(Complex.abs a) : ℂ)  := by
+          sorry
+
+
+        have : -1 = (↑(Complex.abs a) : ℂ ) → 1 + (↑(Complex.abs a) : ℂ ) = 0 := by
+          intro _
+          sorry
+
+
 
         --specialize lt a
         --have : 0 ≤ ((1 : ℂ) + ↑(Complex.abs (a : ℂ)))  → (1 : ℂ) + ‖a‖ ≠ 0 := by sorry--exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
@@ -179,6 +225,8 @@ noncomputable instance : IsSensiblyNormed ℂ where
           exact le_abs_self a
         --exact this (1 + ↑(Complex.abs x))
         sorry
+      --have : x ≤ 1 + ↑(Complex.abs x) := by sorry
+
 
       sorry
     apply div_le_one_of_le
@@ -196,32 +244,19 @@ section Seq_cpt_continuity
 --variable (ys : ℕ → f '' K)
 
 lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
-    (hf : SeqContinuous f) {K : Set X} (hK : IsSeqCompact K) : IsSeqCompact (f '' K) := by
-  intro ys hy
-  let xs := fun n ↦ Exists.choose (hy n)
-  have hxs : ∀ n, xs n ∈ K ∧ f (xs n) = ys n := fun n ↦ Exists.choose_spec (hy n)
-  simp [forall_and] at hxs
-  obtain ⟨hxl, hxr⟩ := hxs
-  have hx :  ∀ x : ℕ → X, (∀ (n : ℕ), x n ∈ K) → ∃ a ∈ K, ∃ φ : ℕ → ℕ,
-      StrictMono φ ∧ Filter.Tendsto (x ∘ φ) Filter.atTop (nhds a) := by
-    exact fun ⦃x⦄ a ↦ hK a
-  specialize hx xs hxl
+    (f_cont : SeqContinuous f) {K : Set X} (K_cpt : IsSeqCompact K) : IsSeqCompact (f '' K) := by
+  intro ys ys_in_fK
+  let xs := fun n ↦ Exists.choose (ys_in_fK n)
+  obtain ⟨xs_in_K, fxs_eq_ys⟩ : (∀ n, xs n ∈ K) ∧ ∀ n, f (xs n) = ys n :=
+    forall_and.mp fun n ↦ Exists.choose_spec (ys_in_fK n)
   simp only [Set.mem_image, exists_exists_and_eq_and]
-  obtain ⟨a, ha, phi, hx⟩ := hx
-  use a, ha, phi
-  constructor
-  · exact hx.1
-  · have : Filter.Tendsto (xs ∘ phi) Filter.atTop (nhds a) ↔ Filter.Tendsto (ys ∘ phi) Filter.atTop (nhds (f a)) := by
-      constructor
-      · exact fun a_1 ↦ Filter.Tendsto.congr (fun x ↦ hxr (phi x)) (hf a_1)
-      · intro
-        exact hx.2
-    rw [← this]
-    exact hx.2
-
+  obtain ⟨a, a_in_K, phi, phi_mono, xs_phi_lim⟩ := K_cpt xs_in_K
+  refine ⟨a, a_in_K, phi, phi_mono, ?_⟩
+  exact Filter.Tendsto.congr (fun x ↦ fxs_eq_ys (phi x)) (f_cont xs_phi_lim)
 
 #check Filter.tendsto_of_seq_tendsto
 #check forall_const
+
 --#check Filter.Tendsto (ys ∘ φ) Filter.atTop (nhds a)
 --#check
 --have hy5 := hy 5
@@ -234,10 +269,8 @@ example {X : Type*} [TopologicalSpace X] [SeqCompactSpace X] : IsSeqCompact (Set
 
 lemma SeqCompactSpace.range {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] [SeqCompactSpace X]
     (f : X → Y) (hf : SeqContinuous f) : IsSeqCompact (Set.range f) := by
-  have := (@seqCompactSpace_iff X _ ).mp ‹SeqCompactSpace X›
-  have foo : Set.range f = (f '' Set.univ) := by exact Eq.symm Set.image_univ
-  rw[foo]
-  apply IsSeqCompact.image f hf this
+  rw [← Set.image_univ]
+  exact IsSeqCompact.image f hf ((seqCompactSpace_iff X).mp ‹SeqCompactSpace X›)
 
 
 #check SeqCompactSpace
@@ -528,7 +561,6 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 #check tsum_add
 
 
-
 noncomputable def ourMetricSpace : MetricSpace X where
   dist := ourMetric gs
   dist_self := by
@@ -560,19 +592,50 @@ noncomputable instance : MetricSpace (kopio X gs gs_sep gs_bdd) := ourMetricSpac
 
 lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
     ourMetric gs p.1 p.2) := by
-  have : ∀ x y, Continuous (fun n ↦ ‖gs n x - gs n y‖) := by
+  have foo1: ∀ x y, Continuous (fun n ↦ ‖gs n x - gs n y‖) := by
     exact fun x y ↦ { isOpen_preimage := fun s a ↦ trivial }
-  have : ∀ x y, Continuous (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) := by
+  have foo2 : ∀ x y, Continuous (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) := by
     exact fun x y ↦ { isOpen_preimage := fun s a ↦ trivial }
-  have : Continuous (fun (x, y) ↦ ourMetric gs x y) := by
+  --have : Continuous (fun (x, y) ↦ ourMetric gs x y) := by
+  have := @continuous_tsum ℕ (X × X) ℝ _ _ (fun (n : ℕ) ↦ 2 * (1 / 2) ^ n) _
+      (fun n ↦ fun (x, y) ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) ?_ ?_ ?_
+  · exact this
+  · intro i
+    simp only [one_div, inv_pow]
+    have cont_xy : ∀ x y : X, Continuous (fun (x,y) ↦ ‖gs i x - gs i y‖) := by
+      intro x y
+      simp
+      have : Continuous (fun (x,y) ↦ gs i x - gs i y) := by
+        have := gs_cont
+        simp only
 
-    sorry
-  sorry
-#check @continuous_tsum ℕ X 𝕜 _
+        sorry
+      have := @Continuous.norm (X × X) 𝕜 _ _ (fun (x,y) ↦ gs i x - gs i y) this
+      simp at this
+      exact this
+    simp at foo2
+    --have : ∀ x : X, Continuous fun x ↦ fun y ↦ 1 / 2 ^ i := by sorry
+    have := @Continuous.mul ℝ (X × X) _ _ _ _ (2 ^ i)⁻¹ (fun (x,y) ↦ ‖gs i x - gs i y‖) ?_ ?_
+    · exact this
+    ·
+      sorry
+    · simp only
+
+      sorry
+
+  · exact @Summable.mul_left ℕ ℝ _ _ _ (fun (n : ℕ) ↦ (1 / 2) ^ n) 2 summable_geometric_two
+  · simp only [inv_pow, norm_mul, norm_inv, norm_pow, RCLike.norm_ofNat, norm_norm,
+    Prod.forall]
+    intro n a b
+    simp only [one_div, norm_inv, RCLike.norm_ofNat, inv_pow, mul_comm]
+    rw [mul_le_mul_right]
+    · have := norm_sub_le_of_le (gs_bdd n a) (gs_bdd n b)
+      linarith
+    · simp only [inv_pos, Nat.ofNat_pos, pow_pos]
 
 lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
     dist (kopio.mk X gs gs_sep gs_bdd p.1) (kopio.mk X gs gs_sep gs_bdd p.2)) := by
-  exact cont_ourMetric gs gs_cont
+  exact cont_ourMetric gs gs_bdd gs_cont
 
 --#check @continuous_tsum ℕ X 𝕜 _ _
 #check continuous_generateFrom
@@ -582,6 +645,8 @@ lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous 
 #check Metric.continuous_iff'
 #check Continuous.isOpen_preimage
 #check IsOpen.mem_nhds
+#check summable_one_div_pow_of_le
+#check summable_geometric_iff_norm_lt_1
 --#check @continuous_tsum ℕ X 𝕜 _ _ (fun n ↦ 1/(2 ^ (n-1))) _ gs
 
 --#check
@@ -665,6 +730,10 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜] [
     exact fun n ↦ @Continuous.comp X 𝕜 𝕜 _ _ _ (gs n) (squeeze 𝕜) (cont_squeeze 𝕜) (gs_cont n)
 
   have hom := @homeomorph_OurMetric X 𝕜 _ _ _ hs hs_cont hs_sep hs_bdd
+
+  have mspace := MetricSpace (kopio X hs hs_sep hs_bdd)
+  --have := hom.inducing mspace
+
 
   have kopio_mspace := MetricSpace (kopio X hs hs_sep hs_bdd)
 
@@ -775,7 +844,6 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
 
   have seq_cpt_space := @FirstCountableTopology.seq_compact_of_compact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
       _ _ b_isCompact'
-  --have seq_cpt := (@seqCompactSpace_iff (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) _ ).mp seq_cpt_space
 
   have seq_cont_phi : SeqContinuous (fun φ : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) ↦ (φ : WeakDual ℂ V)) := by
     refine continuous_iff_seqContinuous.mp ?_
@@ -787,10 +855,6 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
 
   simp only [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
   rfl
-  --sorry
-
-
-
 
 #check Continuous.seqContinuous
 #check IsSeqCompact
