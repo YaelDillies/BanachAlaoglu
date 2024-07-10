@@ -590,40 +590,26 @@ def kopio.toOrigin (X :Type*) (gs : ℕ → X → 𝕜) (gs_sep : Set.SeparatesP
 
 noncomputable instance : MetricSpace (kopio X gs gs_sep gs_bdd) := ourMetricSpace gs gs_sep gs_bdd
 
+--example (f : X → ℝ) (g : X → ℝ) (hf : Continuous f) (hg : Continuous g) : Continuous ((f + g) : X × X → ℝ ) := by sorry
+
 lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
     ourMetric gs p.1 p.2) := by
-  have foo1: ∀ x y, Continuous (fun n ↦ ‖gs n x - gs n y‖) := by
-    exact fun x y ↦ { isOpen_preimage := fun s a ↦ trivial }
-  have foo2 : ∀ x y, Continuous (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) := by
-    exact fun x y ↦ { isOpen_preimage := fun s a ↦ trivial }
-  --have : Continuous (fun (x, y) ↦ ourMetric gs x y) := by
-  have := @continuous_tsum ℕ (X × X) ℝ _ _ (fun (n : ℕ) ↦ 2 * (1 / 2) ^ n) _
-      (fun n ↦ fun (x, y) ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) ?_ ?_ ?_
-  · exact this
+
+  apply @continuous_tsum ℕ (X × X) ℝ _ _ (fun (n : ℕ) ↦ 2 * (1 / 2) ^ n) _
+    (fun n ↦ fun (x, y) ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) ?_ (@Summable.mul_left ℕ ℝ _ _ _ (fun (n : ℕ) ↦ (1 / 2) ^ n) 2 summable_geometric_two) ?_
   · intro i
     simp only [one_div, inv_pow]
-    have cont_xy : ∀ x y : X, Continuous (fun (x,y) ↦ ‖gs i x - gs i y‖) := by
-      intro x y
-      simp
+    have cont_xy : Continuous (fun (x,y) ↦ ‖gs i x - gs i y‖) := by
       have : Continuous (fun (x,y) ↦ gs i x - gs i y) := by
-        have := gs_cont
-        simp only
+        have := @Continuous.add 𝕜 (X × X) _ _ _ _ (fun (x, _) ↦ gs i x) (fun (_, y) ↦ - gs i y)
+            (by exact Continuous.fst' (gs_cont i)) (Continuous.snd' (Continuous.neg (gs_cont i)))
+        ring_nf at this
+        exact this
 
-        sorry
-      have := @Continuous.norm (X × X) 𝕜 _ _ (fun (x,y) ↦ gs i x - gs i y) this
-      simp at this
-      exact this
-    simp at foo2
-    --have : ∀ x : X, Continuous fun x ↦ fun y ↦ 1 / 2 ^ i := by sorry
-    have := @Continuous.mul ℝ (X × X) _ _ _ _ (2 ^ i)⁻¹ (fun (x,y) ↦ ‖gs i x - gs i y‖) ?_ ?_
-    · exact this
-    ·
-      sorry
-    · simp only
+      exact Continuous.norm this
 
-      sorry
+    exact @Continuous.mul ℝ (X × X) _ _ _ _ (2 ^ i)⁻¹ (fun (x,y) ↦ ‖gs i x - gs i y‖) (@continuous_const (X × X) ℝ _ _ (2 ^ i)⁻¹) cont_xy
 
-  · exact @Summable.mul_left ℕ ℝ _ _ _ (fun (n : ℕ) ↦ (1 / 2) ^ n) 2 summable_geometric_two
   · simp only [inv_pow, norm_mul, norm_inv, norm_pow, RCLike.norm_ofNat, norm_norm,
     Prod.forall]
     intro n a b
@@ -632,6 +618,7 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (
     · have := norm_sub_le_of_le (gs_bdd n a) (gs_bdd n b)
       linarith
     · simp only [inv_pos, Nat.ofNat_pos, pow_pos]
+
 
 lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
     dist (kopio.mk X gs gs_sep gs_bdd p.1) (kopio.mk X gs gs_sep gs_bdd p.2)) := by
@@ -647,6 +634,7 @@ lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous 
 #check IsOpen.mem_nhds
 #check summable_one_div_pow_of_le
 #check summable_geometric_iff_norm_lt_1
+#check Prod.continuousMul
 --#check @continuous_tsum ℕ X 𝕜 _ _ (fun n ↦ 1/(2 ^ (n-1))) _ gs
 
 --#check
@@ -877,3 +865,14 @@ theorem _root_.Inducing.MetrizableSpace [TopologicalSpace.MetrizableSpace Y] {f 
     sorry
 end inducing
 -/
+section inf_dim
+variable {X 𝕜: Type*} [NormedAddCommGroup X] [NormedField 𝕜] [NormedSpace 𝕜 X] [CompleteSpace X]
+
+lemma dual_not_metrizable : ¬TopologicalSpace.MetrizableSpace (WeakDual 𝕜 X) := by
+  by_contra
+  have dual_first_countable := @TopologicalSpace.PseudoMetrizableSpace.firstCountableTopology (WeakDual 𝕜 X) _ _
+  --have : ∀ a : (WeakDual 𝕜 X), (𝓝 a).IsCountablyGenerated := by sorry
+
+  sorry
+
+end inf_dim
