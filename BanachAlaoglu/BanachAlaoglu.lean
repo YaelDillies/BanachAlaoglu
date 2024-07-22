@@ -2,6 +2,25 @@
 import Mathlib
 --set_option maxHeartbeats 1000000
 
+section inducing
+--variable {Y :Type*}
+variable {X Y : Type*} [TopologicalSpace X][TopologicalSpace Y]
+open TopologicalSpace
+
+def Inducing.comapMetricSpace {α β} [TopologicalSpace α] [m : MetricSpace β] {f : α → β}
+    (hf : Inducing f) (inj : Function.Injective f) : MetricSpace α :=
+  .replaceTopology (.induced f inj m) hf.induced
+
+
+
+theorem Inducing.metrizableSpace [MetrizableSpace Y] {f : X → Y}
+    (hf : Inducing f) (inj : Function.Injective f) : MetrizableSpace X := by
+  letI : MetricSpace Y := metrizableSpaceMetric Y
+  --⟨⟨hf.comapMetricSpace, rfl⟩⟩
+  refine ⟨@Inducing.comapMetricSpace X Y _ _ f hf inj, rfl⟩
+
+end inducing
+
 section assumption_on_the_normed_field
 open Function
 class IsSensiblyNormed (𝕜: Type*) [NormedField 𝕜] where
@@ -83,9 +102,14 @@ noncomputable instance : IsSensiblyNormed ℝ where
 
         sorry
 
-      have : x < 0 ∧ y < 0 → (x + x * |y| = y + y * |x|) = (- x + - x * y = - y + - y * x) := by sorry
+      have : x < 0 ∧ y < 0 → (x + x * |y| = y + y * |x|) = (- x + - x * y = - y + - y * x) := by
 
-      have : x < 0 ∧ 0 ≤ y → (x + x * |y| = y + y * |x|) = (- x + - x * y = y + y * x) := by sorry
+        sorry
+
+      have : x < 0 ∧ 0 ≤ y → (x + x * |y| = y + y * |x|) = (- x + - x * y = y + y * x) := by
+
+        sorry
+
 
 
 
@@ -115,9 +139,10 @@ noncomputable instance : IsSensiblyNormed ℝ where
     have : ∀ x : ℝ , ‖x / (1 + ‖x‖)‖ ≤ 1 := by
       intro x
       simp only [Real.norm_eq_abs, norm_inv]
-      have : ∀ a b : ℝ, a ≤ b → a / b ≤ 1 := by
+      have : ∀ a b : ℝ, 0 < b ∧ a ≤ b → a / b ≤ 1 := by
         intro a b
         intro a_le_b
+        cases' a_le_b with  h1 h2
 
         sorry
       have : |x / (1 + |x|)| ≤ 1 := by
@@ -144,11 +169,14 @@ noncomputable instance : IsSensiblyNormed ℝ where
               simp [add_nonneg]
             --simp only []
 
+            simp_all [Real.norm_eq_abs, iff_true, le_add_iff_nonneg_left]
+
             sorry
+        simp_all [Real.norm_eq_abs, iff_true]
 
 
-        sorry
-      sorry
+      simp_all only [Real.norm_eq_abs]
+
         --simp only [abs_le]
         --exact ⟨ge_minus_one, h x⟩
       --exact this
@@ -183,7 +211,8 @@ noncomputable instance : IsSensiblyNormed ℂ where
 
 
 
-      sorry
+      simp_all only [iff_true]
+
     have foo2 : Continuous (fun a : ℂ ↦ ((1 : ℂ) + ‖a‖)) := by
       exact Continuous.add (by exact continuous_const) (by exact foo)
     --have : Continuous (fun a:ℝ  ↦ 1) := by exact?
@@ -209,18 +238,22 @@ noncomputable instance : IsSensiblyNormed ℂ where
           exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
         have := this lt
         have : -1 ≠ (↑(Complex.abs a) : ℂ)  := by
+
           sorry
 
 
         have : -1 = (↑(Complex.abs a) : ℂ ) → 1 + (↑(Complex.abs a) : ℂ ) = 0 := by
           intro _
-          sorry
+
+          simp_all only [Complex.norm_eq_abs, apply_nonneg, ne_eq, not_false_eq_true, imp_self, not_true_eq_false]
+
 
 
 
         --specialize lt a
         --have : 0 ≤ ((1 : ℂ) + ↑(Complex.abs (a : ℂ)))  → (1 : ℂ) + ‖a‖ ≠ 0 := by sorry--exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
         --exact this lt
+
         sorry
       apply this
     have : Continuous (fun a : ℂ ↦ a) := continuous_id
@@ -233,6 +266,7 @@ noncomputable instance : IsSensiblyNormed ℂ where
   inj := by
     intro x y x_eq_y
     norm_num at x_eq_y
+
     sorry
   bdd := by
     intro c
@@ -247,6 +281,8 @@ noncomputable instance : IsSensiblyNormed ℂ where
           simp only [Complex.abs_ofReal]
           exact le_abs_self a
         --exact this (1 + ↑(Complex.abs x))
+
+
         sorry
       --have : x ≤ 1 + ↑(Complex.abs x) := by sorry
 
@@ -262,10 +298,6 @@ end assumption_on_the_normed_field
 
 section Seq_cpt_continuity
 
-#check Exists.choose
-#check Exists.choose_spec
---variable (ys : ℕ → f '' K)
-
 lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
     (f_cont : SeqContinuous f) {K : Set X} (K_cpt : IsSeqCompact K) : IsSeqCompact (f '' K) := by
   intro ys ys_in_fK
@@ -277,16 +309,6 @@ lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y]
   refine ⟨a, a_in_K, phi, phi_mono, ?_⟩
   exact Filter.Tendsto.congr (fun x ↦ fxs_eq_ys (phi x)) (f_cont xs_phi_lim)
 
-#check Filter.tendsto_of_seq_tendsto
-#check forall_const
-
---#check Filter.Tendsto (ys ∘ φ) Filter.atTop (nhds a)
---#check
---have hy5 := hy 5
-  --let x5 := Exists.choose hy5
-  --have hx5 : x5 ∈ K ∧ f x5 = ys 5 := Exists.choose_spec hy5
-  --have hyn := fun n ↦ hy n
-
 example {X : Type*} [TopologicalSpace X] [SeqCompactSpace X] : IsSeqCompact (Set.univ : Set X) := by
   exact (seqCompactSpace_iff X).mp ‹SeqCompactSpace X›
 
@@ -295,24 +317,14 @@ lemma SeqCompactSpace.range {X Y : Type*} [TopologicalSpace X] [TopologicalSpace
   rw [← Set.image_univ]
   exact IsSeqCompact.image f hf ((seqCompactSpace_iff X).mp ‹SeqCompactSpace X›)
 
-
-#check SeqCompactSpace
-#check IsSeqCompact
-#check @SeqCompactSpace.tendsto_subseq
-#check @IsSeqCompact.subseq_of_frequently_in
-#check Set.mem_image_iff_bex
-
---#check fun n ↦ (xs n)
-
 end Seq_cpt_continuity
 
 
 
 section Metrizability_lemma
---set_option diagnostics true
+
 
 variable {X 𝕜 : Type*} [TopologicalSpace X] [CompactSpace X] [NormedField 𝕜]
---variable (g : X → ℝ) (g_cont : Continuous g)
 variable (gs : ℕ → X → 𝕜)
 variable (gs_cont : ∀ n, Continuous (gs n))
 variable (gs_sep : Set.SeparatesPoints (Set.range gs))
@@ -320,7 +332,6 @@ variable (gs_bdd : ∀ n : ℕ, ∀ x : X, ‖gs n x‖  ≤ 1)
 
 noncomputable def ourMetric (x y : X) : ℝ :=
   ∑' n, (1/2)^n * ‖gs n x - gs n y‖
-
 
 lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
   intro x y
@@ -390,14 +401,6 @@ example (g : ℕ → ℝ) (h : ∀ (i : ℕ), g i ≥ 0) (h' : Summable g) :
     _ ↔ g = 0 := hasSum_zero_iff_of_nonneg h
     _ ↔ _ := Function.funext_iff
 
-#check tsum_eq_zero_iff
-#check HasSum.summable
-#check HasSum
-#check mul_eq_zero
-#check @pow_pos ℝ _ (1/2)
-#check gs_sep
-
-
 lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
   intro x y
   rw [ourMetric, ourMetric]
@@ -410,7 +413,7 @@ lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
 
 lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
   intro x y z
-  rw [ourMetric, ourMetric, ourMetric]
+  simp only [ourMetric]
 
   have plusminus_eq_self : ∀ n, ‖gs n x - gs n z‖  = ‖gs n x + (gs n y - gs n y) - gs n z‖  := by
     intro n
@@ -455,7 +458,7 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
           ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
         intro i
         simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
-          RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right] --mul_comm
+          RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
         exact norm_bdd i
 
       exact summable_if_bounded this
@@ -493,7 +496,6 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 
         exact summable_if_bounded this
 
-  --have pm : ∀ n : ℕ, ‖gs n x + -gs n y‖ = ‖gs n x -gs n y‖ := by simp[sub_eq_add_neg]
 
   have fsummable : Summable fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖ := by
     have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
@@ -535,13 +537,6 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 
   rw [tsum_add_ineq] at tsum_tri_ineq
   exact tsum_tri_ineq
-
---#check le_trans
-#check Summable.of_norm_bounded
-#check @summable_geometric_iff_norm_lt_one
-#check Summable.const_smul
-#check tsum_add
-
 
 noncomputable def ourMetricSpace : MetricSpace X where
   dist := ourMetric gs
@@ -599,28 +594,9 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (
       linarith
     · simp only [inv_pos, Nat.ofNat_pos, pow_pos]
 
-
 lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
     dist (kopio.mk X gs gs_sep gs_bdd p.1) (kopio.mk X gs gs_sep gs_bdd p.2)) := by
   exact cont_ourMetric gs gs_bdd gs_cont
-
---#check @continuous_tsum ℕ X 𝕜 _ _
-#check continuous_generateFrom
-#check Metric.nhds_basis_ball
-#check continuous_iff_continuousAt
-#check continuous_generateFrom
-#check Metric.continuous_iff'
-#check Continuous.isOpen_preimage
-#check IsOpen.mem_nhds
-#check summable_one_div_pow_of_le
-#check summable_geometric_iff_norm_lt_1
-#check Prod.continuousMul
---#check @continuous_tsum ℕ X 𝕜 _ _ (fun n ↦ 1/(2 ^ (n-1))) _ gs
-
---#check
-
---example (Y : Type*) [MetricSpace Y] (f : X → Y) (x : X) (h : ∀ r > 0, IsOpen (f ⁻¹' Metric.ball (f x) r)) :
-    --ContinuousAt f x := by sorry
 
 example (X Y Z : Type*) [TopologicalSpace X] [TopologicalSpace Y] [TopologicalSpace Z]
     (ϕ : X × Y → Z) (x : X) (hphi : Continuous ϕ) : Continuous (fun y ↦ ϕ ⟨x, y⟩ ) := by
@@ -649,45 +625,36 @@ lemma cont_kopio_toOrigin (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs :
     exact fun s ↦ Eq.symm (Set.EqOn.image_eq_self fun ⦃x⦄ ↦ congrFun rfl)
   have : ∀ (s : Set X), IsClosed s → IsClosed (kopio.toOrigin X gs gs_sep gs_bdd ⁻¹' s) := by
     intro M M_closed
-    have M_cpt_X : IsCompact M := by exact IsClosed.isCompact M_closed
+    have M_cpt_X := IsClosed.isCompact M_closed
     rw [@isCompact_iff_finite_subcover X _ M] at M_cpt_X
     have : ∀ s : Set (kopio X gs gs_sep gs_bdd), IsOpen s → IsOpen (kopio.mk X gs gs_sep gs_bdd ⁻¹' s) := by
       intro s
-      refine ?_
       have := @cont_kopio_mk 𝕜 _ X _ _ gs gs_sep gs_bdd gs_cont
       rw [continuous_def] at this
       specialize this s
       exact this
     have : IsClosed (kopio.toOrigin X gs gs_sep gs_bdd ⁻¹' M) := by
       simp [symm M]
-
       have M_image_cpt : IsCompact (kopio.mk X gs gs_sep gs_bdd '' M) := by
         apply isCompact_of_finite_subcover
-        intro n Us Usi_open
+        intro _ Us Usi_open
         simp [kopio.mk]
         exact fun a ↦ M_cpt_X Us (fun i ↦ this (Us i) (Usi_open i)) a
-
-      have M_image_closed := IsCompact.isClosed M_image_cpt
-      exact M_image_closed
-
+      exact IsCompact.isClosed M_image_cpt
     exact this
   have cont_iff_closed := @continuous_iff_isClosed (kopio X gs gs_sep gs_bdd) X _ _ (kopio.toOrigin X gs gs_sep gs_bdd)
-  rw [← cont_iff_closed] at this
+  simp [← cont_iff_closed] at this
   exact this
 
-#check continuous_id
-#check TopologicalSpace.coinduced id ‹TopologicalSpace X›
-#check UniformSpace.toTopologicalSpace
-#check @UniformSpace.toTopologicalSpace_mono X
 
 noncomputable def homeomorph_OurMetric :
   X ≃ₜ kopio X gs gs_sep gs_bdd where
     toFun := kopio.mk X gs gs_sep gs_bdd
     invFun := kopio.toOrigin X gs gs_sep gs_bdd
-    left_inv := by exact congrFun rfl
-    right_inv := by exact congrFun rfl
-    continuous_toFun := by exact cont_kopio_mk X gs gs_sep gs_bdd gs_cont
-    continuous_invFun := by exact cont_kopio_toOrigin X gs gs_sep gs_bdd gs_cont
+    left_inv := congrFun rfl
+    right_inv := congrFun rfl
+    continuous_toFun := cont_kopio_mk X gs gs_sep gs_bdd gs_cont
+    continuous_invFun := cont_kopio_toOrigin X gs gs_sep gs_bdd gs_cont
 
 --#check X ≃ₜ ourMetricSpace gs
 #check ourMetricSpace gs
@@ -725,34 +692,8 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜] [
 
   have hom := homeomorph_OurMetric hs hs_cont hs_sep hs_bdd
 
-  have mspace := MetricSpace (kopio X hs hs_sep hs_bdd)
-  --have := hom.inducing mspace
+  exact hom.inducing.metrizableSpace (f := hom) hom.injective
 
-
-  have kopio_mspace := MetricSpace (kopio X hs hs_sep hs_bdd)
-
-  have induced_eq := @Homeomorph.induced_eq X (kopio X hs hs_sep hs_bdd) _ _ hom
-  have induced := @inducing_induced X (kopio X hs hs_sep hs_bdd) _ hom
-  --have psm := @TopologicalSpace.MetrizableSpace.toPseudoMetrizableSpace (kopio X hs hs_sep hs_bdd) _ _
-  --have := @Inducing.pseudoMetrizableSpace X (kopio X hs hs_sep hs_bdd) _ _ _ hom
-  have := @Homeomorph.inducing X (kopio X hs hs_sep hs_bdd) _ _ hom
-  --apply this at psm
-
-  --have foo := @Inducing.pseudoMetrizableSpace X
-  --let MetrizableSpace X := @TopologicalSpace.metrizableSpaceMetric X
-  rw [induced_eq] at induced
-
-
-  refine ⟨?_⟩
-
-  --rw [Homeomorph.inducing this]
-  --#check @TopologicalSpace.MetrizableSpace.toPseudoMetrizableSpace (kopio X gs gs_sep gs_bdd) _ _
-  --#check @Inducing.pseudoMetrizableSpace -- X (kopio X gs gs_sep gs_bdd) _ _ _ hom
-  sorry
-/-
-letI : PseudoMetricSpace X := TopologicalSpace.pseudoMetrizableSpacePseudoMetric X
-  (homeomorph_probabilityMeasure_levyProkhorov (Ω := X)).inducing.pseudoMetrizableSpace
--/
 
 #check Set.range gs
 #check Set.SeparatesPoints (Set.range gs)
@@ -766,10 +707,17 @@ variable (x y : X)
 #check TopologicalSpace.MetrizableSpace X
 #check MeasureTheory.LevyProkhorov
 #check @Inducing.pseudoMetrizableSpace X (kopio X gs gs_sep gs_bdd) _ _ _
-#check Homeomorph.induced_eq
+#check Homeomorph.inducing
+#check TopologicalSpace.MetrizableSpace
+#check MetricSpace.induced
+#check Inducing.metrizableSpace
+
+
 
 
 end Metrizability_lemma
+
+
 
 section Seq_Banach_Alaoglu
 
@@ -793,8 +741,7 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuou
       simp only [Set.eqOn_range]
       exact (Set.eqOn_univ (⇑w ∘ vs) (⇑y ∘ vs)).mp fun ⦃x⦄ _ ↦ w_ne_y x
     have := Continuous.ext_on (TopologicalSpace.denseRange_denseSeq V) (map_continuous w) (map_continuous y) this
-    simp at this
-    exact this
+    exact DFunLike.coe_fn_eq.mp this
 
 #check @TopologicalSpace.exists_countable_dense (WeakDual ℂ V) _
 #check @DenseRange.equalizer
@@ -803,8 +750,7 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuou
 /- A compact subset of the dual V* of a separable space V is metrizable. -/
 lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
   have k_cpt' : CompactSpace K := by exact isCompact_iff_compactSpace.mp K_cpt
-  have := exists_gs V K
-  obtain ⟨gs, gs_cont, gs_sep⟩ := this
+  obtain ⟨gs, gs_cont, gs_sep⟩ := exists_gs V K
   let hs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual ℂ V)
   apply X_metrizable K ℂ hs
   · intro n
@@ -820,11 +766,6 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
     apply this
     apply gs_sep
     exact Subtype.coe_ne_coe.mpr x_ne_y
-
-#check X_metrizable
-#check Continuous.restrict
-#check @WeakDual.toNormedDual ℂ _ V _ _
-#check Subalgebra.SeparatesPoints
 
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ) :
@@ -851,30 +792,12 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
   simp only [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
   rfl
 
-#check Continuous.seqContinuous
-#check IsSeqCompact
-#check Module.Dual
-#check WeakDual ℂ V
-#check Set (WeakDual ℂ V)
-#check IsCompact
-#check @UniformSpace.isCompact_iff_isSeqCompact
-#check IsCompact.isSeqCompact
-#check TopologicalSpace.exists_countable_dense
-#check subset_metrizable
-
 end Seq_Banach_Alaoglu
-/-
-section inducing
-variable (X Y : Type*) [TopologicalSpace X] [TopologicalSpace Y]
-theorem _root_.Inducing.MetrizableSpace [TopologicalSpace.MetrizableSpace Y] {f : X → Y}
-    (hf : Inducing f) : TopologicalSpace.MetrizableSpace X := by
 
-    sorry
-end inducing
--/
 section inf_dim
 variable {X 𝕜: Type*} [NormedAddCommGroup X] [NormedField 𝕜] [NormedSpace 𝕜 X] [CompleteSpace X]
 
+/- If V is an infinite-dimensional Banach Space, then the dual V* is not metrizable -/
 lemma dual_not_metrizable : ¬TopologicalSpace.MetrizableSpace (WeakDual 𝕜 X) := by
   by_contra
   have dual_first_countable := @TopologicalSpace.PseudoMetrizableSpace.firstCountableTopology (WeakDual 𝕜 X) _ _
@@ -884,7 +807,12 @@ lemma dual_not_metrizable : ¬TopologicalSpace.MetrizableSpace (WeakDual 𝕜 X)
   have dual_count_iff := @Filter.isCountablyGenerated_iff_exists_antitone_basis (WeakDual 𝕜 X) (nhds 0)
   --rw [this] at dual_count
   have dual_hasAntitone := dual_count_iff.mp dual_count
+  obtain ⟨nhd_basis, hasAntitone⟩ := dual_hasAntitone
 
+  obtain ⟨basis, basis_countable⟩ := dual_count
+
+  sorry
+  --have thisbasis : ℕ → Set (WeakDual 𝕜 X) :=
 
   --have := @Filter.HasBasis.exists_antitone_subbasis
   --have xs : (ℕ → X)
@@ -895,7 +823,7 @@ lemma dual_not_metrizable : ¬TopologicalSpace.MetrizableSpace (WeakDual 𝕜 X)
  -- have := ∀ n : ℕ, Bn = Set.iInter (phi (xs n) )
   --have : ∃ xs : (ℕ → X), ∃ ε > 0,
 
-  sorry
+
 #check Set.iUnion
 #check Set.iInter
 #check Filter.HasBasis.exists_antitone_subbasis
