@@ -1,30 +1,22 @@
 --import Mathlib
 --import Mathlib.Topology.Defs.Sequences
 import Mathlib.Topology.Sequences
-
-theorem IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
-    (f_cont : SeqContinuous f) {K : Set X} (K_cpt : IsSeqCompact K) : IsSeqCompact (f '' K) := by
+variable [TopologicalSpace X][TopologicalSpace Y] {f : X → Y}
+open Set Filter
+open scoped Topology
+theorem IsSeqCompact.image (f_cont : SeqContinuous f) {K : Set X} (K_cpt : IsSeqCompact K) :
+    IsSeqCompact (f '' K) := by
   intro ys ys_in_fK
-  let xs := fun n ↦ Exists.choose (ys_in_fK n)
-  obtain ⟨xs_in_K, fxs_eq_ys⟩ : (∀ n, xs n ∈ K) ∧ ∀ n, f (xs n) = ys n :=
-    forall_and.mp fun n ↦ Exists.choose_spec (ys_in_fK n)
-  simp only [Set.mem_image, exists_exists_and_eq_and]
+  choose xs xs_in_K fxs_eq_ys using ys_in_fK
   obtain ⟨a, a_in_K, phi, phi_mono, xs_phi_lim⟩ := K_cpt xs_in_K
-  refine ⟨a, a_in_K, phi, phi_mono, ?_⟩
-  exact Filter.Tendsto.congr (fun x ↦ fxs_eq_ys (phi x)) (f_cont xs_phi_lim)
+  refine ⟨f a, mem_image_of_mem f a_in_K, phi, phi_mono, ?_⟩
+  exact (f_cont xs_phi_lim).congr fun x ↦ fxs_eq_ys (phi x)
 
-
-theorem isSeqCompact_range {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] [SeqCompactSpace X]
-    (f : X → Y) (hf : SeqContinuous f) : IsSeqCompact (Set.range f) := by
-  rw [← Set.image_univ]
-  exact IsSeqCompact.image f hf ((seqCompactSpace_iff X).mp ‹SeqCompactSpace X›)
-
-
-lemma IsSeqCompact.image_of_continuous {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
-    (f_cont : Continuous f) {K : Set X} (K_cpt : IsSeqCompact K) : IsSeqCompact (f '' K) :=
-  IsSeqCompact.image f (Continuous.seqContinuous f_cont) K_cpt
-
-
-lemma SeqCompactSpace.range_of_continuous {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] [SeqCompactSpace X]
-    (f : X → Y) (f_cont : Continuous f) : IsSeqCompact (Set.range f) :=
-  isSeqCompact_range f (Continuous.seqContinuous f_cont)
+/-- The range of sequentially continuous function on a sequentially compact space is sequentially
+compact. -/
+theorem IsSeqCompact.range [SeqCompactSpace X] (f_cont : SeqContinuous f) :
+    IsSeqCompact (Set.range f) := by
+  --rw [← Set.image_univ]
+  --exact IsSeqCompact.image f_cont ((seqCompactSpace_iff X).mp ‹SeqCompactSpace X›)
+  have IsSeqCompact.univ := ‹SeqCompactSpace X›.seq_compact_univ
+  simpa using IsSeqCompact.univ.image f_cont

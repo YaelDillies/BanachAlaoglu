@@ -2,26 +2,9 @@
 import Mathlib
 --set_option maxHeartbeats 1000000
 
-section inducing
---variable {Y :Type*}
-variable {X Y : Type*} [TopologicalSpace X][TopologicalSpace Y]
-open TopologicalSpace
-
-def Inducing.comapMetricSpace {α β} [TopologicalSpace α] [m : MetricSpace β] {f : α → β}
-    (hf : Inducing f) (inj : Function.Injective f) : MetricSpace α :=
-  .replaceTopology (.induced f inj m) hf.induced
-
-
-
-theorem Inducing.metrizableSpace [MetrizableSpace Y] {f : X → Y}
-    (hf : Inducing f) (inj : Function.Injective f) : MetrizableSpace X := by
-  letI : MetricSpace Y := metrizableSpaceMetric Y
-  --⟨⟨hf.comapMetricSpace, rfl⟩⟩
-  refine ⟨@Inducing.comapMetricSpace X Y _ _ f hf inj, rfl⟩
-
-end inducing
 
 section assumption_on_the_normed_field
+
 open Function
 class IsSensiblyNormed (𝕜: Type*) [NormedField 𝕜] where
   squeeze' : 𝕜 → 𝕜
@@ -29,271 +12,258 @@ class IsSensiblyNormed (𝕜: Type*) [NormedField 𝕜] where
   inj : Injective squeeze'
   bdd : ∀ c : 𝕜, ‖squeeze' c‖ ≤ 1
 variable (𝕜: Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜]
-def squeeze (c : 𝕜) : 𝕜 :=
-    ‹IsSensiblyNormed 𝕜›.squeeze' c
+def squeeze (c : 𝕜) : 𝕜 := IsSensiblyNormed.squeeze' c
 
-lemma cont_squeeze : Continuous (squeeze 𝕜) := by
-  exact ‹IsSensiblyNormed 𝕜›.cont
+lemma cont_squeeze : Continuous (squeeze 𝕜) := IsSensiblyNormed.cont
 
-lemma inj_squeeze : Injective (squeeze 𝕜) := by
+lemma inj_squeeze : Injective (squeeze 𝕜) := IsSensiblyNormed.inj
 
-  exact ‹IsSensiblyNormed 𝕜›.inj
+lemma bdd_squeeze (c : 𝕜) : ‖squeeze 𝕜 c‖ ≤ 1 := IsSensiblyNormed.bdd _
 
-lemma bdd_squeeze (c : 𝕜) : ∀ c : 𝕜, ‖squeeze 𝕜 c‖ ≤ 1 := by
-  exact ‹IsSensiblyNormed 𝕜›.bdd
-
---example (a b : ℝ) (h1 : 0 ≤ a) (h2 : 0 ≤ b) (h3 : a ≤ b) : a / b ≤ 1 := by
-  --exact div_le_one_of_le h3 h2
---example (a : ℝ) (h1 : a ≤ 1) (h2 : 0 ≤ a) : |a| ≤ 1 := by
 
 noncomputable instance : IsSensiblyNormed ℝ where
   squeeze' : ℝ → ℝ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
-    have foo : Continuous (fun a : ℝ ↦ ‖a‖) := by exact continuous_norm
-    have foo2 : Continuous (fun a : ℝ ↦ (1 + ‖a‖)) := by
-      exact Continuous.add (by exact continuous_const) (by exact foo)
-    --have : Continuous (fun a:ℝ  ↦ 1) := by exact?
-
     have nonzero : (∀ (x : ℝ), (fun a ↦ 1 + ‖a‖) x ≠ 0) := by
       intro x
       have lt : ∀ a : ℝ, 0 < 1 + ‖a‖ := by
+        simp only [Real.norm_eq_abs]
         simp [add_comm, add_pos_of_nonneg_of_pos]
-      have : ∀ a : ℝ, 1 + ‖a‖ ≠ 0 := by
-        intro a
-        specialize lt a
-        have : 0 < 1 + ‖a‖ → 1 + ‖a‖ ≠ 0 := by exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
-        exact this lt
-      apply this
-    have : Continuous (fun a : ℝ ↦ a) := continuous_id
-    exact Continuous.div this foo2 nonzero
+      exact ne_of_gt (lt x)
+    exact Continuous.div continuous_id (Continuous.add (continuous_const) (continuous_norm)) nonzero
 
   inj := by
-    have foo : ∀ x y: ℝ, x/(1 + ‖x‖) = y/(1 + ‖y‖) → (x = y) := by
+    have foo_k : ∀ x y: ℝ, x/(1 + ‖x‖) = y/(1 + ‖y‖) → (x = y) := by
       intro x y
       intro h
-      simp at h
-      have lt : ∀ a : ℝ, 0 < 1 + ‖a‖ := by
-        simp [add_comm, add_pos_of_nonneg_of_pos]
-      have : ∀ a : ℝ, 1 + ‖a‖ ≠ 0 := by
-        intro a
-        specialize lt a
-        have : 0 < 1 + ‖a‖ → 1 + ‖a‖ ≠ 0 := by exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
-        exact this lt
-      --contrapose! h
-      have xnz : (1 + |x|) ≠ 0 := by exact this x
-      have ynz : (1 + |y|) ≠ 0 := by exact this y
-      have := @mul_eq_mul_of_div_eq_div ℝ _ (1 + |x|) (1 + |y|) x y xnz ynz h
-      --have := @div_eq_iff_eq_mul ℝ _ --x (1 + |x|) (y/(1 + |y|))
-      --have := (@div_eq_div_iff_mul_eq_mul ℝ _ x (1 + |x|) y (1 + |y|))
-      --contrapose! this
-      ring_nf at this
-
-
-      have : 0 ≤ x ∧ 0 ≤ y → (x + x * |y| = y + y * |x|) = (x + x * y = y + y * x) := by
-        intro h
-        rw [← abs_eq_self] at h
-        rw [← abs_eq_self] at h
-        simp [h]
-
-      have : 0 ≤ x ∧ y < 0 → (x + x * |y| = y + y * |x|) = (x + x * y = - y + - y * x) := by
-        intro h
-        rw [← abs_eq_self] at h
-        simp [h]
-
-        sorry
-
-      have : x < 0 ∧ y < 0 → (x + x * |y| = y + y * |x|) = (- x + - x * y = - y + - y * x) := by
-
-        sorry
-
-      have : x < 0 ∧ 0 ≤ y → (x + x * |y| = y + y * |x|) = (- x + - x * y = y + y * x) := by
-
-        sorry
-
-
-
-
-
-
-
-
-      sorry
-    exact foo
-
- --#check CommGroup ℝ
-  bdd := by
-    have h : ∀ x : ℝ, x / (1 + ‖x‖) ≤ 1 := by
-      intro x
-      have : x ≤ 1 + ‖x‖ := by
-        simp only [Real.norm_eq_abs]
-        apply le_add_of_nonneg_of_le
+      simp only [Real.norm_eq_abs] at h
+      apply mul_eq_mul_of_div_eq_div at h
+      ring_nf at h
+      cases' le_or_lt 0 x with h1 h2
+      · cases' le_or_lt 0 y with g1 g2
+        · simp only [abs_of_nonneg h1, abs_of_nonneg g1] at h
+          ring_nf at h
+          simp only [add_comm, add_left_inj] at h
+          exact h
+        · simp only [abs_of_nonneg h1, abs_of_neg g2] at h
+          ring_nf at h
+          have : x - x * y = x * y + y := h
+          have mul_neg :  y * x ≤ 0 := by
+              exact mul_nonpos_of_nonpos_of_nonneg (le_of_lt g2) h1
+          linarith
+      · cases' le_or_lt 0 y with g1 g2
+        · simp only [abs_of_neg h2, abs_of_nonneg g1] at h
+          ring_nf at h
+          simp only [add_comm, add_left_inj] at h
+          have mul_neg :  x * y ≤ 0 := by
+              exact mul_nonpos_of_nonpos_of_nonneg (le_of_lt h2) g1
+          linarith
+        · simp only [abs_of_neg h2, abs_of_neg g2, mul_neg, mul_comm, add_left_inj] at h
+          exact h
+      · apply ne_of_gt
+        apply add_pos_of_pos_of_nonneg
         · linarith
-        · exact le_abs_self x
-      have : x / (1 + ‖x‖) ≤ 1 := by
-        apply div_le_one_of_le
-        · exact this
-        · exact add_nonneg (by linarith) (by norm_num)
-      exact this
+        · simp only [abs_nonneg]
+      · apply ne_of_gt
+        apply add_pos_of_pos_of_nonneg
+        · linarith
+        · simp only [abs_nonneg]
 
+      --simp only [ne_eq] at h
+    exact foo_k
+
+  bdd := by
     intro c
-    have : ∀ x : ℝ , ‖x / (1 + ‖x‖)‖ ≤ 1 := by
+    have h : ∀ x : ℝ, |x| / |(1 + ‖x‖)| ≤ 1 := by
       intro x
-      simp only [Real.norm_eq_abs, norm_inv]
-      have : ∀ a b : ℝ, 0 < b ∧ a ≤ b → a / b ≤ 1 := by
-        intro a b
-        intro a_le_b
-        cases' a_le_b with  h1 h2
+      have h2 : 0 < 1 + ‖x‖ := by
+        simp only [Real.norm_eq_abs, add_comm]
+        exact lt_add_of_le_of_pos (abs_nonneg x) (Real.zero_lt_one)
+      have foo2 : |x| ≤ |1 + ‖x‖| := by
+        simp only [Real.norm_eq_abs]
+        have : 0 ≤ 1 + |x| := by
+          exact le_of_lt h2
+        simp only [abs_of_nonneg this]
+        norm_num
+      exact (div_le_one (abs_pos_of_pos h2)).mpr foo2
+    simp_all only [Real.norm_eq_abs, norm_div, ge_iff_le]
 
-        sorry
-      have : |x / (1 + |x|)| ≤ 1 := by
-        have le_one : x / (1 + |x|) ≤ 1 := by exact h x
-        have x_le_opa : x ≤ 1 + |x| := by
-          apply le_add_of_nonneg_of_le
-          · linarith
-          · exact le_abs_self x
-        have := @abs_le_one_iff_mul_self_le_one ℝ _ (x / (1 + |x|))
-        have : (x / (1 + |x|)) * (x / (1 + |x|)) ≤ 1 ↔ x ≤ 1 + |x| := by
-          constructor
-          · exact fun a ↦ x_le_opa
-          · have : (x / (1 + |x|)) * (x / (1 + |x|)) = (x * x) / ( 1 + 2 * |x| + x * x) := by
-              ring_nf
-              simp only [inv_pow, mul_eq_mul_left_iff, inv_inj, ne_eq, OfNat.ofNat_ne_zero,
-                not_false_eq_true, pow_eq_zero_iff]
-              left
-              ring_nf
-              simp only [sq_abs]
-            simp [this]
-            intro _
-            have : x * x ≤ (1 + 2 * |x| + x * x) := by
-              norm_num
-              simp [add_nonneg]
-            --simp only []
-
-            simp_all [Real.norm_eq_abs, iff_true, le_add_iff_nonneg_left]
-
-            sorry
-        simp_all [Real.norm_eq_abs, iff_true]
-
-
-      simp_all only [Real.norm_eq_abs]
-
-        --simp only [abs_le]
-        --exact ⟨ge_minus_one, h x⟩
-      --exact this
-    --exact this c
-    exact this c
-
-/- have ge_minus_one : -1 ≤ x / (1 + |x|) := by
-          have : x ≤ 1 + |x| := by
-            apply le_add_of_nonneg_of_le
-            · linarith
-            · exact le_abs_self x
-          have : x ≤ 1 + |x| → |x / (1 + |x|)| ≤ 1 := by
-
-            sorry
-        -/
-example (a b c : ℝ) : (a * b)/(c * b) = a / c := by
-
-  sorry
 
 noncomputable instance : IsSensiblyNormed ℂ where
   squeeze' : ℂ → ℂ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
-    have foo : Continuous (fun a : ℂ ↦ (‖a‖ : ℂ) ) := by
-      norm_num
-      have := Complex.continuous_abs
-      have : Continuous (fun a ↦ Complex.abs a) ↔ Continuous (fun a ↦ (Complex.abs a : ℂ )) := by
-        constructor
-        · intro _
 
-          sorry
-        · exact fun a ↦ this
+    have cont' : Continuous (fun a ↦ ((Complex.abs a):ℂ )) := by
+      have cont_phi : Continuous (fun (b : ℝ) ↦ (b : ℂ)) := by
+        exact Complex.continuous_ofReal
+      exact Continuous.comp' cont_phi Complex.continuous_abs
 
+    have cont_sum' : Continuous (fun a ↦ ((1 + Complex.abs a):ℂ) ) := by
+      exact @Continuous.add ℂ ℂ _ _ _ _ (fun a ↦ 1) (fun a ↦ (Complex.abs a))
+        (continuous_const) cont'
 
-
-      simp_all only [iff_true]
-
-    have foo2 : Continuous (fun a : ℂ ↦ ((1 : ℂ) + ‖a‖)) := by
-      exact Continuous.add (by exact continuous_const) (by exact foo)
-    --have : Continuous (fun a:ℝ  ↦ 1) := by exact?
-    have nonzero : (∀ (x : ℂ), (fun (a : ℂ) ↦ ((1 : ℂ) + ‖a‖)) x ≠ 0):= by
+    have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) x ≠ 0) := by
       intro x
-      simp only [Complex.norm_eq_abs]
-      /-have lt : ∀ a : ℂ, 0 < ((1 : ℂ)  + ‖a‖) := by
-        simp only [Complex.norm_eq_abs]
-        intro a
-        apply lt_add_of_lt_of_nonneg
-        · linarith
-        · exact AbsoluteValue.nonneg Complex.abs a
--/
-      have : ∀ a : ℂ, (1 : ℂ) + ‖a‖ ≠ 0 := by
-        intro a
-        simp only [Complex.norm_eq_abs]
-        have : 0 ≤ ↑(Complex.abs a)  := by exact AbsoluteValue.nonneg Complex.abs a
-        have lt : 0 < 1 + ↑(Complex.abs a) := by
-          apply add_pos_of_pos_of_nonneg
-          · norm_num
-          · exact this
-        have : 0 < 1 + ↑(Complex.abs a) → 1 + ↑(Complex.abs a) ≠ 0 := by
-          exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
-        have := this lt
-        have : -1 ≠ (↑(Complex.abs a) : ℂ)  := by
+      have h2 : 0 < 1 + Complex.abs x := by
+        have abs_nonneg2 (x : ℂ) : 0 ≤ Complex.abs x := by
+          exact Real.sqrt_nonneg _
+        rw [add_comm]
+        exact lt_add_of_le_of_pos (abs_nonneg2 x) (Real.zero_lt_one)
+      exact Ne.symm (ne_of_lt h2)
 
-          sorry
+    have nonzero' : (∀ (x : ℂ), ((fun a ↦ ((1 : ℂ)  + (Complex.abs a))) x)  ≠ 0) := by
+      intro x
+      contrapose! nonzero
+      use x
+      let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
+      have : comp x = 0 := by
+        unfold_let
+        simp [nonzero]
 
-
-        have : -1 = (↑(Complex.abs a) : ℂ ) → 1 + (↑(Complex.abs a) : ℂ ) = 0 := by
-          intro _
-
-          simp_all only [Complex.norm_eq_abs, apply_nonneg, ne_eq, not_false_eq_true, imp_self, not_true_eq_false]
-
-
-
-
-        --specialize lt a
-        --have : 0 ≤ ((1 : ℂ) + ↑(Complex.abs (a : ℂ)))  → (1 : ℂ) + ‖a‖ ≠ 0 := by sorry--exact fun a_1 ↦ Ne.symm (ne_of_lt lt)
-        --exact this lt
-
-        sorry
-      apply this
-    have : Continuous (fun a : ℂ ↦ a) := continuous_id
-
-    have := @Continuous.div ℂ ℂ _ _ _ _ (fun a ↦ a) (fun a : ℂ ↦ (1 + ‖a‖)) _ this foo2 --nonzero
-    exact this nonzero
-
-
+      exact Complex.ofReal_eq_zero.mp this
+    exact Continuous.div (continuous_id') cont_sum' nonzero'
 
   inj := by
-    intro x y x_eq_y
-    norm_num at x_eq_y
+    intro x y h
+    dsimp [squeeze] at h
 
-    sorry
-  bdd := by
-    intro c
-    norm_num
-    have foo2 : ∀ x : ℂ, 0 ≤ Complex.abs (1 + ↑(Complex.abs x)) := by
-      norm_num
-    have foo4 : ∀ x : ℂ, Complex.abs x ≤ Complex.abs (1 + ↑(Complex.abs x)) := by
-      intro x
-      have : Complex.abs x ≤ (1 + ↑(Complex.abs x)) := by norm_num
-      have : (1 + ↑(Complex.abs x)) ≤ Complex.abs ((1:ℝ ) + (↑(Complex.abs x) : ℝ)) := by
-        have (a : ℝ) : a ≤ Complex.abs (a) := by
-          simp only [Complex.abs_ofReal]
-          exact le_abs_self a
-        --exact this (1 + ↑(Complex.abs x))
+    have h1 : x * (1 + Complex.abs y) = y * (1 + Complex.abs x) := by
+      apply mul_eq_mul_of_div_eq_div at h
+      exact h
+      · have := add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs x) (Real.zero_lt_one)
+        have : 1 + ↑(Complex.abs x) ≠ 0 := by linarith
+        contrapose! this
+        have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) x ≠ 0) := by
+          intro x
+          have h2 : 0 < 1 + Complex.abs x := by
+            have abs_nonneg2 (x : ℂ) : 0 ≤ Complex.abs x := by exact Real.sqrt_nonneg _
+            rw [add_comm]
+            exact lt_add_of_le_of_pos (abs_nonneg2 x) (Real.zero_lt_one)
+          exact Ne.symm (ne_of_lt h2)
+        let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
+        have : comp x = 0 := by
+          unfold_let
+          simp [nonzero]
+          exact this
+        exact Complex.ofReal_eq_zero.mp this
+
+      · have := add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs y) (Real.zero_lt_one)
+        have : 1 + ↑(Complex.abs y) ≠ 0 := by linarith
+        contrapose! this
+        have nonzero : (∀ (y : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) y ≠ 0) := by
+          intro y
+          have h2 : 0 < 1 + Complex.abs y := by
+            have abs_nonneg2 (y : ℂ) : 0 ≤ Complex.abs y := by exact Real.sqrt_nonneg _
+            rw [add_comm]
+            exact lt_add_of_le_of_pos (abs_nonneg2 y) (Real.zero_lt_one)
+          exact Ne.symm (ne_of_lt h2)
+        let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
+        have : comp y = 0 := by
+          unfold_let
+          simp [nonzero]
+          exact this
+        exact Complex.ofReal_eq_zero.mp this
 
 
-        sorry
-      --have : x ≤ 1 + ↑(Complex.abs x) := by sorry
+
+      --exact (div_eq_div_iff (by linarith [Complex.abs_nonneg x]) (by linarith [Complex.abs_nonneg y])).mp h
+
+    have h_mod : Complex.abs (x * (1 + Complex.abs y)) = Complex.abs (y * (1 + Complex.abs x)) := by
+      rw [h1]
+
+    have abs_mul (a b : ℂ) : (Complex.abs (a * b)) = (Complex.abs a) * Complex.abs b := by
+      simp only [Complex.abs_def, Complex.normSq_apply] at h_mod
+
+      simp_all only [Complex.mul_re, Complex.add_re, Complex.one_re, Complex.ofReal_re, Complex.add_im,
+        Complex.one_im, Complex.ofReal_im, add_zero, mul_zero, sub_zero, Complex.mul_im, zero_add,
+        mul_eq_mul_left_iff, Complex.ofReal_eq_zero, map_eq_zero]
+
+
+
+
+
+    --rw [abs_mul, abs_mul] at h_mod
+      sorry
+    simp [Complex.abs_ofReal (1 + Complex.abs y), Complex.abs_ofReal (1 + Complex.abs x)] at h_mod
+
+    have h2 : Complex.abs x * (1 + Complex.abs y) = Complex.abs y * (1 + Complex.abs x) := by
+      simp_all [abs_mul]
+
 
 
       sorry
-    apply div_le_one_of_le
-    · exact foo4 c
-    · exact foo2 c
 
 
 
+    have : Complex.abs x * (1 + Complex.abs y) = Complex.abs y * (1 + Complex.abs x) := h2
+
+    have h_abs_eq : Complex.abs x = Complex.abs y := by linarith
+
+
+    sorry
+
+/-
+  -- Given that abs z1 = abs z2, we now need to consider the complex argument
+    have : ∃ θ : ℝ, z1 = abs z1 * exp (θ * I) ∧ z2 = abs z2 * exp (θ * I),
+    { use arg z1, split; rw [←abs_cos_add_sin_mul_I, ←abs_cos_add_sin_mul_I, h_abs_eq]; exact re_add_im_eq z1, },
+    rcases this with ⟨θ, hz1, hz2⟩,
+    rw [hz1, hz2] at h_eq,
+
+  -- Simplify the equation
+    have h_simp : abs z1 * exp (θ * I) * (1 + abs z2) = abs z2 * exp (θ * I) * (1 + abs z1) := h_eq,
+    rw [mul_assoc, mul_assoc] at h_simp,
+    rw [←mul_assoc (abs z1), ←mul_assoc (abs z2)] at h_simp,
+    rw [←abs z1 * exp (θ * I), ←abs z2 * exp (θ * I)] at h_simp,
+
+  -- Since exp(θ * I) is non-zero, we can divide both sides by exp(θ * I)
+    have h_exp_ne_zero : exp (θ * I) ≠ 0, { apply complex.exp_ne_zero, },
+    apply mul_left_cancel₀ h_exp_ne_zero at h_simp,
+
+    -- This reduces to abs z1 = abs z2, which we already have, so z1 = z2
+    have : abs z1 = abs z2 := h_abs_eq,
+    exact this,
+
+-/
+    /-
+    have foo_k : ∀ x y: ℂ, x/(1 + Complex.abs x) = y/(1 + Complex.abs y) → (x = y) := by
+          intro x y
+          intro h
+          --simp only [Real.norm_eq_abs] at h
+          apply mul_eq_mul_of_div_eq_div at h
+          ring_nf at h
+          by_cases h_c: x = y
+          · exact h_c
+          ·
+            sorry
+    -/
+
+
+
+
+  bdd := by
+    intro c
+    simp only [Complex.norm_eq_abs, norm_div]
+    have h : ∀ x : ℂ , Complex.abs x / Complex.abs (1 + Complex.abs x) ≤ 1 := by
+      intro x
+      have h2 : 0 < 1 + Complex.abs x := by
+        have abs_nonneg2 (x : ℂ) : 0 ≤ Complex.abs x := by
+          exact Real.sqrt_nonneg _
+        rw [add_comm]
+        exact lt_add_of_le_of_pos (abs_nonneg2 x) (Real.zero_lt_one)
+
+      have pos : 0 ≤ 1 + Complex.abs x := by
+        exact le_of_lt h2
+      have : Complex.abs (1 + ↑(Complex.abs x)) = 1 + ↑(Complex.abs x) := by
+        have := Complex.abs_of_nonneg pos
+        simp_all only [abs_eq_self, Complex.ofReal_add, Complex.ofReal_one]
+      rw [this]
+      --have : (Complex.abs x) ≤ (1 + ↑(Complex.abs x)) := by norm_num
+      exact (div_le_one h2).mpr (by norm_num)
+
+    specialize h c
+    exact h
+example (x y : ℂ) : x = y → Complex.abs x = Complex.abs y := by
+  exact fun a ↦ congrArg (⇑Complex.abs) a
 end assumption_on_the_normed_field
 
 section Seq_cpt_continuity
@@ -319,10 +289,7 @@ lemma SeqCompactSpace.range {X Y : Type*} [TopologicalSpace X] [TopologicalSpace
 
 end Seq_cpt_continuity
 
-
-
 section Metrizability_lemma
-
 
 variable {X 𝕜 : Type*} [TopologicalSpace X] [CompactSpace X] [NormedField 𝕜]
 variable (gs : ℕ → X → 𝕜)
@@ -677,22 +644,20 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜] [
     simp only [Set.mem_range, exists_exists_eq_and, Function.comp_apply]
     specialize gs_sep x_ne_y
     simp at gs_sep
-
     obtain ⟨a⟩ := gs_sep
+    use a
     have : ∀ x y : 𝕜, x ≠ y → squeeze 𝕜 x ≠ squeeze 𝕜 y := by
       exact fun x y a a_1 ↦ a (inj_squeeze 𝕜 a_1)
-    use a
     apply this
     assumption
   have hs_bdd : ∀ (n : ℕ) (x : X), ‖hs n x‖ ≤ 1 := by
-    exact fun n x ↦ bdd_squeeze 𝕜 (gs n x) (gs n x)
+    exact fun n x ↦ bdd_squeeze 𝕜 (gs n x)
 
   have hs_cont : ∀ n : ℕ, Continuous (hs n) := by
     exact fun n ↦ Continuous.comp (cont_squeeze 𝕜) (gs_cont n)
 
   have hom := homeomorph_OurMetric hs hs_cont hs_sep hs_bdd
-
-  exact hom.inducing.metrizableSpace (f := hom) hom.injective
+  exact hom.embedding.metrizableSpace
 
 
 #check Set.range gs
@@ -710,7 +675,6 @@ variable (x y : X)
 #check Homeomorph.inducing
 #check TopologicalSpace.MetrizableSpace
 #check MetricSpace.induced
-#check Inducing.metrizableSpace
 
 
 
@@ -727,7 +691,8 @@ variable [TopologicalSpace.SeparableSpace V]
 variable (K : Set (WeakDual ℂ V)) (K_cpt : IsCompact K)
 
 /- There exists a sequence of continuous functions that separates points on V*. -/
-lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ), (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
+lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ),
+    (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
   set vs := TopologicalSpace.denseSeq V
   set gs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
   set gs2 : ℕ → WeakDual ℂ V → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
