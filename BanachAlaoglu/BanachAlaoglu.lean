@@ -21,57 +21,40 @@ lemma inj_squeeze : Injective (squeeze 𝕜) := IsSensiblyNormed.inj
 
 lemma bdd_squeeze (c : 𝕜) : ‖squeeze 𝕜 c‖ ≤ 1 := IsSensiblyNormed.bdd _
 
-
 noncomputable instance : IsSensiblyNormed ℝ where
   squeeze' : ℝ → ℝ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
     have nonzero : (∀ (x : ℝ), (fun a ↦ 1 + ‖a‖) x ≠ 0) := by
       intro x
       have lt : ∀ a : ℝ, 0 < 1 + ‖a‖ := by
-        simp only [Real.norm_eq_abs]
-        simp [add_comm, add_pos_of_nonneg_of_pos]
+        simp only [Real.norm_eq_abs, add_comm, abs_nonneg, zero_lt_one, add_pos_of_nonneg_of_pos, implies_true]
       exact ne_of_gt (lt x)
     exact Continuous.div continuous_id (Continuous.add (continuous_const) (continuous_norm)) nonzero
 
   inj := by
-    have foo_k : ∀ x y: ℝ, x/(1 + ‖x‖) = y/(1 + ‖y‖) → (x = y) := by
-      intro x y
-      intro h
-      simp only [Real.norm_eq_abs] at h
-      apply mul_eq_mul_of_div_eq_div at h
-      ring_nf at h
-      cases' le_or_lt 0 x with h1 h2
-      · cases' le_or_lt 0 y with g1 g2
-        · simp only [abs_of_nonneg h1, abs_of_nonneg g1] at h
-          ring_nf at h
-          simp only [add_comm, add_left_inj] at h
-          exact h
-        · simp only [abs_of_nonneg h1, abs_of_neg g2] at h
-          ring_nf at h
-          have : x - x * y = x * y + y := h
-          have mul_neg :  y * x ≤ 0 := by
-              exact mul_nonpos_of_nonpos_of_nonneg (le_of_lt g2) h1
-          linarith
-      · cases' le_or_lt 0 y with g1 g2
-        · simp only [abs_of_neg h2, abs_of_nonneg g1] at h
-          ring_nf at h
-          simp only [add_comm, add_left_inj] at h
-          have mul_neg :  x * y ≤ 0 := by
-              exact mul_nonpos_of_nonpos_of_nonneg (le_of_lt h2) g1
-          linarith
-        · simp only [abs_of_neg h2, abs_of_neg g2, mul_neg, mul_comm, add_left_inj] at h
-          exact h
-      · apply ne_of_gt
-        apply add_pos_of_pos_of_nonneg
-        · linarith
-        · simp only [abs_nonneg]
-      · apply ne_of_gt
-        apply add_pos_of_pos_of_nonneg
-        · linarith
-        · simp only [abs_nonneg]
-
-      --simp only [ne_eq] at h
-    exact foo_k
+    intro x y h
+    simp only [Real.norm_eq_abs] at h
+    apply mul_eq_mul_of_div_eq_div at h
+    ring_nf at h
+    cases' le_or_lt 0 x with h1 h2
+    · cases' le_or_lt 0 y with g1 g2
+      · simp only [abs_of_nonneg h1, abs_of_nonneg g1, mul_comm, add_comm, add_left_inj] at h
+        exact h
+      · simp only [abs_of_nonneg h1, abs_of_neg g2] at h
+        linarith [mul_nonpos_of_nonpos_of_nonneg (le_of_lt g2) h1]
+    · cases' le_or_lt 0 y with g1 g2
+      · simp only [abs_of_neg h2, abs_of_nonneg g1, mul_neg, mul_comm, add_comm, add_left_inj] at h
+        linarith [mul_nonpos_of_nonpos_of_nonneg (le_of_lt h2) g1]
+      · simp only [abs_of_neg h2, abs_of_neg g2, mul_neg, mul_comm, add_left_inj] at h
+        exact h
+    · apply ne_of_gt
+      apply add_pos_of_pos_of_nonneg
+      · linarith
+      · simp only [abs_nonneg]
+    · apply ne_of_gt
+      apply add_pos_of_pos_of_nonneg
+      · linarith
+      · simp only [abs_nonneg]
 
   bdd := by
     intro c
@@ -82,9 +65,8 @@ noncomputable instance : IsSensiblyNormed ℝ where
         exact lt_add_of_le_of_pos (abs_nonneg x) (Real.zero_lt_one)
       have foo2 : |x| ≤ |1 + ‖x‖| := by
         simp only [Real.norm_eq_abs]
-        have : 0 ≤ 1 + |x| := by
-          exact le_of_lt h2
-        simp only [abs_of_nonneg this]
+        have ge_zero : 0 ≤ 1 + |x| := by exact le_of_lt h2
+        simp only [abs_of_nonneg ge_zero]
         norm_num
       exact (div_le_one (abs_pos_of_pos h2)).mpr foo2
     simp_all only [Real.norm_eq_abs, norm_div, ge_iff_le]
@@ -93,77 +75,56 @@ noncomputable instance : IsSensiblyNormed ℝ where
 noncomputable instance : IsSensiblyNormed ℂ where
   squeeze' : ℂ → ℂ := (fun a ↦ a / (1 + ‖a‖))
   cont := by
-
-    have cont' : Continuous (fun a ↦ ((Complex.abs a):ℂ )) := by
-      have cont_phi : Continuous (fun (b : ℝ) ↦ (b : ℂ)) := by
-        exact Complex.continuous_ofReal
-      exact Continuous.comp' cont_phi Complex.continuous_abs
-
     have cont_sum' : Continuous (fun a ↦ ((1 + Complex.abs a):ℂ) ) := by
-      exact @Continuous.add ℂ ℂ _ _ _ _ (fun _ ↦ 1) (fun a ↦ (Complex.abs a))
-        (continuous_const) cont'
+      exact Continuous.add (continuous_const) (Continuous.comp' Complex.continuous_ofReal Complex.continuous_abs)
 
     have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) x ≠ 0) := by
       intro x
       have h2 : 0 < 1 + Complex.abs x := by
-        have abs_nonneg2 (x : ℂ) : 0 ≤ Complex.abs x := by
-          exact Real.sqrt_nonneg _
         rw [add_comm]
-        exact lt_add_of_le_of_pos (abs_nonneg2 x) (Real.zero_lt_one)
+        exact lt_add_of_le_of_pos (Real.sqrt_nonneg _) (Real.zero_lt_one)
       exact Ne.symm (ne_of_lt h2)
 
     have nonzero' : (∀ (x : ℂ), ((fun a ↦ ((1 : ℂ)  + (Complex.abs a))) x)  ≠ 0) := by
       intro x
       contrapose! nonzero
       use x
-      let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
-      have : comp x = 0 := by
+      have comp : Function.comp (Complex.ofReal') (fun a ↦ (1  + (Complex.abs a))) x = 0 := by
         unfold_let
-        simp [nonzero]
-
-      exact Complex.ofReal_eq_zero.mp this
+        simp only [comp_apply, Complex.ofReal_add, Complex.ofReal_one, nonzero]
+      exact Complex.ofReal_eq_zero.mp comp
     exact Continuous.div (continuous_id') cont_sum' nonzero'
 
   inj := by
     intro x y h
-    dsimp [squeeze] at h
-
+    simp only [squeeze] at h
+    have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) x ≠ 0) := by
+      intro x
+      have h2 : 0 < 1 + Complex.abs x := by
+        rw [add_comm]
+        exact lt_add_of_le_of_pos (Real.sqrt_nonneg _) (Real.zero_lt_one)
+      exact Ne.symm (ne_of_lt h2)
     have h1 : x * (1 + Complex.abs y) = y * (1 + Complex.abs x) := by
       apply mul_eq_mul_of_div_eq_div at h
       exact h
       · have := add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs x) (Real.zero_lt_one)
-        have : 1 + ↑(Complex.abs x) ≠ 0 := by linarith
-        contrapose! this
-        have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) x ≠ 0) := by
-          intro x
-          have h2 : 0 < 1 + Complex.abs x := by
-            have abs_nonneg2 (x : ℂ) : 0 ≤ Complex.abs x := by exact Real.sqrt_nonneg _
-            rw [add_comm]
-            exact lt_add_of_le_of_pos (abs_nonneg2 x) (Real.zero_lt_one)
-          exact Ne.symm (ne_of_lt h2)
-        let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
-        have : comp x = 0 := by
+        have real_nonzero : 1 + ↑(Complex.abs x) ≠ 0 := by linarith
+        contrapose! real_nonzero
+        have comp : Function.comp (Complex.ofReal') (fun a ↦ (1  + (Complex.abs a))) x = 0 := by
           unfold_let
-          simp [nonzero]
-          exact this
-        exact Complex.ofReal_eq_zero.mp this
+          simp only [comp_apply, Complex.ofReal_add, Complex.ofReal_one]
+          exact real_nonzero
+        exact Complex.ofReal_eq_zero.mp comp
 
       · have := add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs y) (Real.zero_lt_one)
-        have : 1 + ↑(Complex.abs y) ≠ 0 := by linarith
-        contrapose! this
-        have nonzero : (∀ (y : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) y ≠ 0) := by
-          intro y
-          have h2 : 0 < 1 + Complex.abs y := by
-            have abs_nonneg2 (y : ℂ) : 0 ≤ Complex.abs y := by exact Real.sqrt_nonneg _
-            rw [add_comm]
-            exact lt_add_of_le_of_pos (abs_nonneg2 y) (Real.zero_lt_one)
-          exact Ne.symm (ne_of_lt h2)
-        let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
-        have : comp y = 0 := by
+        have real_nonzero : 1 + ↑(Complex.abs y) ≠ 0 := by linarith
+        contrapose! real_nonzero
+        have comp : Function.comp (Complex.ofReal') (fun a ↦ (1  + (Complex.abs a))) y = 0 := by
           unfold_let
-          simp [nonzero]
-          exact this
-        exact Complex.ofReal_eq_zero.mp this
+          simp only [comp_apply, Complex.ofReal_add, Complex.ofReal_one]
+          exact real_nonzero
+
+        exact Complex.ofReal_eq_zero.mp comp
 
     have h_mod : Complex.abs (x * (1 + Complex.abs y)) = Complex.abs (y * (1 + Complex.abs x)) := by
       rw [h1]
@@ -180,56 +141,35 @@ noncomputable instance : IsSensiblyNormed ℂ where
     simp only [abs_mul] at h_mod
     have : ∀ y : ℂ, Complex.abs (1 + ↑(Complex.abs y)) = (1 + (Complex.abs y)) := by
       intro y
-      let idmap := fun (a : ℝ) ↦ (a : ℂ)
-      --let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
+      let idmap := Complex.ofReal'
       have : idmap (1 + ↑(Complex.abs y)) = (1 + ↑(Complex.abs y)) := by
         simp_all only [map_mul, implies_true, Complex.ofReal_add, Complex.ofReal_one, idmap]
       have eq_abs : 1 + Complex.abs y = |1 + Complex.abs y| := by
-        have := @abs_of_nonneg ℝ _ _ (1 + Complex.abs y) _ (by exact le_of_lt (h2 y))
-        exact id (Eq.symm this)
+        exact id (Eq.symm (abs_of_nonneg (by exact le_of_lt (h2 y))))
 
-      have abs_cabs := Complex.abs_ofReal (1 + Complex.abs y)
-      rw [eq_abs, ← abs_cabs]
-      --have : ((1 : ℂ ) + ↑(Complex.abs y)) = ↑(1 + Complex.abs y) := by
-       -- exact id (Eq.symm this)
-      rw [id (Eq.symm this)]
+      rw [eq_abs, ← Complex.abs_ofReal (1 + Complex.abs y), id (Eq.symm this)]
 
     simp only [this] at h_mod
 
     ring_nf at h_mod
     simp only [add_comm, add_left_inj] at h_mod
 
-    have nonzero : (∀ (x : ℂ), (fun a ↦ 1 + ↑(Complex.abs a)) x ≠ 0) := by
-      intro x
-      have h2 : 0 < 1 + Complex.abs x := by
-        have abs_nonneg2 (x : ℂ) : 0 ≤ Complex.abs x := by
-          exact Real.sqrt_nonneg _
-        rw [add_comm]
-        exact lt_add_of_le_of_pos (abs_nonneg2 x) (Real.zero_lt_one)
-      exact Ne.symm (ne_of_lt h2)
-
     have nonzero' : (∀ (x : ℂ), ((fun a ↦ ((1 : ℂ)  + (Complex.abs a))) x)  ≠ 0) := by
       intro x
       contrapose! nonzero
       use x
-      let comp := Function.comp (fun (b : ℝ) ↦ (b : ℂ)) (fun a ↦ (1  + (Complex.abs a)))
-      have : comp x = 0 := by
-        unfold_let
-        simp [nonzero]
-      exact Complex.ofReal_eq_zero.mp this
+      have comp : Function.comp (Complex.ofReal') (fun a ↦ (1  + (Complex.abs a))) x = 0 := by
+          unfold_let
+          simp only [comp_apply, Complex.ofReal_add, Complex.ofReal_one]
+          exact nonzero
+      exact Complex.ofReal_eq_zero.mp comp
 
-    rw [h_mod] at h1
-    simp at h1
+    simp only [h_mod, mul_eq_mul_right_iff] at h1
     cases' h1 with g1 g2
     exact g1
-    --have := add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs y) (Real.zero_lt_one)
-    have real_ne : 1 + ↑(Complex.abs y) ≠ 0 := by linarith [add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs y) (Real.zero_lt_one)]
-    have real_impl_c: 1 + ↑(Complex.abs y) ≠ 0 → (1:ℂ) + ↑(Complex.abs y) ≠ 0 := by
-      exact fun _ ↦ nonzero' y
-
-    exact False.elim (real_impl_c real_ne g2)
-
-
+    have real_ne : 1 + ↑(Complex.abs y) ≠ 0 := by
+      linarith [add_pos_of_nonneg_of_pos (AbsoluteValue.nonneg Complex.abs y) (Real.zero_lt_one)]
+    exact False.elim ((fun _ ↦ nonzero' y) real_ne g2)
 
   bdd := by
     intro c
@@ -253,10 +193,6 @@ noncomputable instance : IsSensiblyNormed ℂ where
 
     specialize h c
     exact h
-example (x y : ℂ) : x = y → Complex.abs x = Complex.abs y := by
-  exact fun a ↦ congrArg (⇑Complex.abs) a
-end assumption_on_the_normed_field
-
 
 section Seq_cpt_continuity
 
@@ -316,7 +252,7 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
         have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
             (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
 
-        have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
+        have bound : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
             ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
           intro i
           simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
@@ -325,7 +261,7 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
           simp only [gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
           exact norm_bdd i
 
-        exact summable_if_bounded this
+        exact summable_if_bounded bound
 
       have terms_pos : ∀ n : ℕ, f n >= 0 := by
         have : ∀ n : ℕ, ‖gs n x - gs n y‖ >= 0 := by
@@ -350,33 +286,39 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
     exact sum
 
   · intro x_eq_y
-    rw [ourMetric, x_eq_y]
-    simp
-
-example (g : ℕ → ℝ) (h : ∀ (i : ℕ), g i ≥ 0) (h' : Summable g) :
-    ∑' (i : ℕ), g i = 0 ↔ ∀ (i : ℕ), g i = 0 := by
-  calc
-    _ ↔ HasSum g 0 := (Summable.hasSum_iff h').symm
-    _ ↔ g = 0 := hasSum_zero_iff_of_nonneg h
-    _ ↔ _ := Function.funext_iff
+    simp only [ourMetric, x_eq_y, one_div, inv_pow, sub_self, norm_zero, mul_zero, tsum_zero]
 
 lemma ourMetric_comm : ∀ x y : X, ourMetric gs x y = ourMetric gs y x := by
   intro x y
-  rw [ourMetric, ourMetric]
-  have abs_eq : ∀ n, ‖gs n x - gs n y‖ = ‖gs n y - gs n x‖  := by
-    intro n
-    exact norm_sub_rev (gs n x) (gs n y)
+  unfold ourMetric
   rw [tsum_congr]
   intro b
-  rw [abs_eq]
+  rw [norm_sub_rev (gs b x) (gs b y)]
 
 lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
   intro x y z
-  simp only [ourMetric]
+  unfold ourMetric
+  have fsummable : ∀ x y, Summable fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖ := by
+    intro x y
+    have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
+        exact fun n ↦ norm_sub_le_of_le (gs_bdd n x) (gs_bdd n y)
+    ring_nf at norm_bdd
+
+    have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
+        (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
+
+    have bound : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
+          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
+        intro i
+        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
+            RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
+        exact norm_bdd i
+
+    exact summable_if_bounded bound
 
   have plusminus_eq_self : ∀ n, ‖gs n x - gs n z‖  = ‖gs n x + (gs n y - gs n y) - gs n z‖  := by
     intro n
-    simp [sub_self (gs n y)]
+    simp only [sub_self, add_zero]
 
   simp_rw [plusminus_eq_self]
 
@@ -390,111 +332,15 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 
   have tsum_tri_ineq : ∑' (n : ℕ), (1 / 2) ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤
       ∑' (n : ℕ), ((1 / 2) ^ n * ‖gs n x - gs n y‖ + (1 / 2) ^ n * ‖gs n y - gs n z‖) := by
-
     apply tsum_le_tsum
     · exact tri_ineq
-    · have abs_plus : ∀ n, ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ ‖gs n x‖  + ‖gs n z‖ := by
-        intro n
-        simp [norm_sub_le (gs n x) (gs n z)]
-
-      have norm_sum_bdd : ∀ n, ‖gs n x‖ + ‖gs n z‖  ≤ 1 + 1 := by
-        intro n
-        have gs_bdd' := gs_bdd
-        specialize gs_bdd n x
-        specialize gs_bdd' n z
-        exact add_le_add gs_bdd gs_bdd'
-
-      have norm_bdd : ∀ n, ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ 1 + 1 := by
-        exact fun n ↦
-          Preorder.le_trans ‖gs n x + (gs n y - gs n y) - gs n z‖ (‖gs n x‖ + ‖gs n z‖) (1 + 1)
-            (abs_plus n) (norm_sum_bdd n)
-      ring_nf at norm_bdd
-
-      have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
-          (fun n ↦ (1/2)^n * ‖gs n x + (gs n y - gs n y) - gs n z‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
-
-      have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x + (gs n y - gs n y) - gs n z‖) i‖
-          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
-        intro i
-        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
-          RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
-        exact norm_bdd i
-
-      exact summable_if_bounded this
-
+    · simp only [sub_self, add_zero]
+      exact fsummable x z
     · apply Summable.add
-      · have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
-          exact fun n ↦ norm_sub_le_of_le (gs_bdd n x) (gs_bdd n y)
-        ring_nf at norm_bdd
+      · exact fsummable x y
+      · exact fsummable y z
 
-        have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
-          (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
-
-        have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
-            ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
-          intro i
-          simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
-            RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
-          exact norm_bdd i
-
-        exact summable_if_bounded this
-
-      · have norm_bdd : ∀ n, ‖gs n y - gs n z‖  ≤ 1 + 1 := by
-          exact fun n ↦ norm_sub_le_of_le (gs_bdd n y) (gs_bdd n z)
-        ring_nf at norm_bdd
-
-        have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
-            (fun n ↦ (1/2)^n * ‖gs n y - gs n z‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
-
-        have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n y - gs n z‖) i‖
-            ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
-          intro i
-          simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
-            RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
-          exact norm_bdd i
-
-        exact summable_if_bounded this
-
-
-  have fsummable : Summable fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖ := by
-    have norm_bdd : ∀ n, ‖gs n x - gs n y‖  ≤ 1 + 1 := by
-        exact fun n ↦ norm_sub_le_of_le (gs_bdd n x) (gs_bdd n y)
-    ring_nf at norm_bdd
-
-    have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
-        (fun n ↦ (1/2)^n * ‖gs n x - gs n y‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
-
-    have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n x - gs n y‖) i‖
-          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
-        intro i
-        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
-            RCLike.norm_ofNat, norm_norm, mul_comm, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
-        exact norm_bdd i
-
-    exact summable_if_bounded this
-
-  have gsummable : Summable fun n ↦ (1 / 2) ^ n * ‖gs n y - gs n z‖ := by
-    have norm_bdd : ∀ n, ‖gs n y - gs n z‖  ≤ 1 + 1 := by
-        exact fun n ↦ norm_sub_le_of_le (gs_bdd n y) (gs_bdd n z)
-    ring_nf at norm_bdd
-
-    have summable_if_bounded := @Summable.of_norm_bounded ℕ ℝ _ _
-          (fun n ↦ (1/2)^n * ‖gs n y - gs n z‖) (fun n ↦ 2 * (1 / 2) ^ n) (Summable.mul_left 2 summable_geometric_two)
-
-    have : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * ‖gs n y - gs n z‖) i‖
-          ≤ (fun n ↦ 2 * (1 / 2) ^ n) i)  := by
-        intro i
-        simp only [one_div, inv_pow, sub_self, add_zero, norm_mul, norm_inv, norm_pow,
-          RCLike.norm_ofNat, norm_norm, mul_comm, gt_iff_lt, inv_pos, Nat.ofNat_pos, pow_pos, mul_le_mul_right]
-        exact norm_bdd i
-
-    exact summable_if_bounded this
-
-  have tsum_add_ineq : ∑' (n : ℕ), ((1 / 2) ^ n * ‖gs n x - gs n y‖ + (1 / 2) ^ n * ‖gs n y - gs n z‖) =
-      ∑' (n : ℕ), (1 / 2) ^ n * ‖gs n x - gs n y‖ + ∑' (n : ℕ), (1 / 2)^ n * ‖gs n y - gs n z‖ := by
-    rw [tsum_add fsummable gsummable]
-
-  rw [tsum_add_ineq] at tsum_tri_ineq
+  rw [tsum_add (fsummable x y) (fsummable y z)] at tsum_tri_ineq
   exact tsum_tri_ineq
 
 noncomputable def ourMetricSpace : MetricSpace X where
@@ -508,7 +354,7 @@ noncomputable def ourMetricSpace : MetricSpace X where
   dist_triangle := by
     intro x y z
     exact (ourMetric_triangle gs gs_bdd x y z)
-  edist_dist := by simp [← ENNReal.ofReal_coe_nnreal]
+  edist_dist := by simp only [← ENNReal.ofReal_coe_nnreal, NNReal.coe_mk, implies_true]
   eq_of_dist_eq_zero := by
     intro x y
     exact (ourMetric_self_iff gs gs_sep gs_bdd).mp
@@ -585,7 +431,7 @@ lemma cont_kopio_toOrigin (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs :
   have : ∀ (s : Set X), IsClosed s → IsClosed (kopio.toOrigin X gs gs_sep gs_bdd ⁻¹' s) := by
     intro M M_closed
     have M_cpt_X := IsClosed.isCompact M_closed
-    rw [@isCompact_iff_finite_subcover X _ M] at M_cpt_X
+    rw [isCompact_iff_finite_subcover] at M_cpt_X
     have : ∀ s : Set (kopio X gs gs_sep gs_bdd), IsOpen s → IsOpen (kopio.mk X gs gs_sep gs_bdd ⁻¹' s) := by
       intro s
       have := @cont_kopio_mk 𝕜 _ X _ _ gs gs_sep gs_bdd gs_cont
@@ -593,16 +439,16 @@ lemma cont_kopio_toOrigin (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs :
       specialize this s
       exact this
     have : IsClosed (kopio.toOrigin X gs gs_sep gs_bdd ⁻¹' M) := by
-      simp [symm M]
+      simp only [symm M]
       have M_image_cpt : IsCompact (kopio.mk X gs gs_sep gs_bdd '' M) := by
         apply isCompact_of_finite_subcover
         intro _ Us Usi_open
-        simp [kopio.mk]
+        simp only [kopio.mk, id_eq, Set.image_id']
         exact fun a ↦ M_cpt_X Us (fun i ↦ this (Us i) (Usi_open i)) a
       exact IsCompact.isClosed M_image_cpt
     exact this
   have cont_iff_closed := @continuous_iff_isClosed (kopio X gs gs_sep gs_bdd) X _ _ (kopio.toOrigin X gs gs_sep gs_bdd)
-  simp [← cont_iff_closed] at this
+  rw [← cont_iff_closed] at this
   exact this
 
 
@@ -614,12 +460,6 @@ noncomputable def homeomorph_OurMetric :
     right_inv := congrFun rfl
     continuous_toFun := cont_kopio_mk X gs gs_sep gs_bdd gs_cont
     continuous_invFun := cont_kopio_toOrigin X gs gs_sep gs_bdd gs_cont
-
---#check X ≃ₜ ourMetricSpace gs
-#check ourMetricSpace gs
-#check BoundedContinuousFunction.mkOfCompact
-#check ContinuousMap.mk
-#check Continuous.comp
 
 /- If X is compact, and there exists a seq of continuous real-valued functions that
 separates points on X, then X is metrizable. -/
@@ -634,7 +474,7 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜] [
     unfold_let
     simp only [Set.mem_range, exists_exists_eq_and, Function.comp_apply]
     specialize gs_sep x_ne_y
-    simp at gs_sep
+    simp only [Set.mem_range, ne_eq, exists_exists_eq_and] at gs_sep
     obtain ⟨a⟩ := gs_sep
     use a
     have : ∀ x y : 𝕜, x ≠ y → squeeze 𝕜 x ≠ squeeze 𝕜 y := by
@@ -649,32 +489,10 @@ lemma X_metrizable (X 𝕜 : Type*) [NormedField 𝕜] [IsSensiblyNormed 𝕜] [
 
   exact (homeomorph_OurMetric hs hs_cont hs_sep hs_bdd).embedding.metrizableSpace
 
-
-#check Set.range gs
-#check Set.SeparatesPoints (Set.range gs)
-#check X_metrizable
-variable (x y : X)
-#check @tsum ℝ _ _ ℕ (fun n ↦ 1/2^n * ‖gs n x - gs n y‖)
-#check tsum (fun n ↦ 1/2^n * ‖gs n x - gs n y‖)
-#check @ENNReal.tsum_eq_zero
-#check IsAbsoluteValue.abv_sub
-#check TopologicalSpace.MetrizableSpace
-#check TopologicalSpace.MetrizableSpace X
-#check MeasureTheory.LevyProkhorov
-#check @Inducing.pseudoMetrizableSpace X (kopio X gs gs_sep gs_bdd) _ _ _
-#check Homeomorph.inducing
-#check TopologicalSpace.MetrizableSpace
-#check MetricSpace.induced
-
-
-
-
 end Metrizability_lemma
 
 
-
 section Seq_Banach_Alaoglu
-
 --variable (𝕜 : Type*)
 variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace ℂ V]
 variable [TopologicalSpace.SeparableSpace V]
@@ -697,10 +515,6 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ),
       exact (Set.eqOn_univ (⇑w ∘ vs) (⇑y ∘ vs)).mp fun ⦃x⦄ _ ↦ w_ne_y x
     have := Continuous.ext_on (TopologicalSpace.denseRange_denseSeq V) (map_continuous w) (map_continuous y) this
     exact DFunLike.coe_fn_eq.mp this
-
-#check @TopologicalSpace.exists_countable_dense (WeakDual ℂ V) _
-#check @DenseRange.equalizer
-
 
 /- A compact subset of the dual V* of a separable space V is metrizable. -/
 lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
