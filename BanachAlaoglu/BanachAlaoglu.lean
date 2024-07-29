@@ -235,17 +235,17 @@ end Metrizability_lemma
 
 
 section Seq_Banach_Alaoglu
---variable (𝕜 : Type*)
-variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace ℂ V]
+variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [ProperSpace 𝕜]
+variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace 𝕜 V]
 variable [TopologicalSpace.SeparableSpace V]
-variable (K : Set (WeakDual ℂ V)) (K_cpt : IsCompact K)
+variable (K : Set (WeakDual 𝕜 V)) (K_cpt : IsCompact K)
 
 /- There exists a sequence of continuous functions that separates points on V*. -/
-lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ),
+lemma exists_gs : ∃ (gs : ℕ → (WeakDual 𝕜 V) → 𝕜),
     (∀ n, Continuous (gs n)) ∧ Set.SeparatesPoints (Set.range gs) := by
   set vs := TopologicalSpace.denseSeq V
-  set gs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n)
-  use (fun n ↦ fun ϕ ↦ (ϕ : WeakDual ℂ V) (vs n))
+  set gs : ℕ → K → 𝕜 := fun n ↦ fun ϕ ↦ (ϕ : WeakDual 𝕜 V) (vs n)
+  use (fun n ↦ fun ϕ ↦ (ϕ : WeakDual 𝕜 V) (vs n))
   --use gs2
   constructor
   · exact fun n ↦ WeakDual.eval_continuous (vs n)
@@ -261,9 +261,9 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual ℂ V) → ℂ),
 /- A compact subset of the dual V* of a separable space V is metrizable. -/
 lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
   have k_cpt' : CompactSpace K := by exact isCompact_iff_compactSpace.mp K_cpt
-  obtain ⟨gs, gs_cont, gs_sep⟩ := exists_gs V K
-  let hs : ℕ → K → ℂ := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual ℂ V)
-  apply X_metrizable K ℂ hs
+  obtain ⟨gs, gs_cont, gs_sep⟩ := exists_gs 𝕜 V K
+  let hs : ℕ → K → 𝕜 := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual 𝕜 V)
+  apply X_metrizable K 𝕜 hs
   · intro n
     exact Continuous.comp (gs_cont n) continuous_subtype_val
   · intro x y x_ne_y
@@ -279,7 +279,7 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
     exact Subtype.coe_ne_coe.mpr x_ne_y
 
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
-theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ) :
+theorem WeakDual.isSeqCompact_closedBall [SequentialSpace V] (x' : NormedSpace.Dual 𝕜 V) (r : ℝ) :
     IsSeqCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
 
   have b_isCompact : IsCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
@@ -288,12 +288,12 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
     exact isCompact_iff_compactSpace.mp b_isCompact
 
   have b_isMetrizable : TopologicalSpace.MetrizableSpace (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
-    exact subset_metrizable V (⇑toNormedDual ⁻¹' Metric.closedBall x' r) b_isCompact
+    exact subset_metrizable 𝕜 V (⇑toNormedDual ⁻¹' Metric.closedBall x' r) b_isCompact
 
   have seq_cpt_space := @FirstCountableTopology.seq_compact_of_compact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
       _ _ b_isCompact'
 
-  have seq_cont_phi : SeqContinuous (fun φ : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) ↦ (φ : WeakDual ℂ V)) := by
+  have seq_cont_phi : SeqContinuous (fun φ : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) ↦ (φ : WeakDual 𝕜 V)) := by
     refine continuous_iff_seqContinuous.mp ?_
     exact continuous_subtype_val
 
