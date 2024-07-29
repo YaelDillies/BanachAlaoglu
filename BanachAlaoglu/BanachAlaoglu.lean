@@ -158,28 +158,6 @@ noncomputable instance : IsSensiblyNormed ℂ where
     specialize h c
     exact h
 
-section Seq_cpt_continuity
-
-lemma IsSeqCompact.image {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] (f : X → Y)
-    (f_cont : SeqContinuous f) {K : Set X} (K_cpt : IsSeqCompact K) : IsSeqCompact (f '' K) := by
-  intro ys ys_in_fK
-  let xs := fun n ↦ Exists.choose (ys_in_fK n)
-  obtain ⟨xs_in_K, fxs_eq_ys⟩ : (∀ n, xs n ∈ K) ∧ ∀ n, f (xs n) = ys n :=
-    forall_and.mp fun n ↦ Exists.choose_spec (ys_in_fK n)
-  simp only [Set.mem_image, exists_exists_and_eq_and]
-  obtain ⟨a, a_in_K, phi, phi_mono, xs_phi_lim⟩ := K_cpt xs_in_K
-  refine ⟨a, a_in_K, phi, phi_mono, ?_⟩
-  exact Filter.Tendsto.congr (fun x ↦ fxs_eq_ys (phi x)) (f_cont xs_phi_lim)
-
-example {X : Type*} [TopologicalSpace X] [SeqCompactSpace X] : IsSeqCompact (Set.univ : Set X) := by
-  exact (seqCompactSpace_iff X).mp ‹SeqCompactSpace X›
-
-lemma SeqCompactSpace.range {X Y : Type*} [TopologicalSpace X] [TopologicalSpace Y] [SeqCompactSpace X]
-    (f : X → Y) (hf : SeqContinuous f) : IsSeqCompact (Set.range f) := by
-  rw [← Set.image_univ]
-  exact IsSeqCompact.image f hf ((seqCompactSpace_iff X).mp ‹SeqCompactSpace X›)
-
-end Seq_cpt_continuity
 
 section Metrizability_lemma
 
@@ -524,7 +502,7 @@ theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual ℂ V) (r : ℝ)
     refine continuous_iff_seqContinuous.mp ?_
     exact continuous_subtype_val
 
-  have seq_incl := @SeqCompactSpace.range (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) (WeakDual ℂ V) _ _ _ (fun φ ↦ φ) seq_cont_phi
+  have seq_incl := IsSeqCompact.range seq_cont_phi
   convert seq_incl
 
   simp only [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
