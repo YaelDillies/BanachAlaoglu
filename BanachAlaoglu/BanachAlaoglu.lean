@@ -16,8 +16,13 @@ variable (gs_cont : ∀ n, Continuous (gs n))
 variable (gs_sep : Set.SeparatesPoints (Set.range gs))
 --variable (gs_bdd : ∀ n : ℕ, ∀ x : X, ‖gs n x‖  ≤ 1)
 
+--noncomputable def ourMetric (x y : X) : ℝ :=
+  --∑' n, (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))
+
 noncomputable def ourMetric (x y : X) : ℝ :=
-  ∑' n, (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))
+  ∑' n, (1/2)^n * min ‖gs n x - gs n y‖ 1
+
+
 variable {gs}
 lemma foo {x : ℝ} (hx : 0 ≤ x) : x / (1 + x) ≤ 1 := by
   calc
@@ -25,12 +30,13 @@ lemma foo {x : ℝ} (hx : 0 ≤ x) : x / (1 + x) ≤ 1 := by
     _ = 1 - 1 / (1 + x) := by rw [sub_div, div_self]; positivity
     _ ≤ 1 := sub_le_self _ (by positivity)
 
-lemma bar : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) i‖
+lemma ourMetric_bdd : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * min ‖gs n x - gs n y‖ 1) i‖
             ≤ (fun n ↦ (1 / 2) ^ n) i)  := by
           intro i
-          simpa [add_nonneg, abs_of_nonneg] using foo (norm_nonneg _)
-lemma summable_if_bounded : Summable (fun n ↦ (1 / 2) ^ n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) :=
-  Summable.of_norm_bounded (fun n ↦  (1 / 2) ^ n) summable_geometric_two (bar)
+          simp [add_nonneg, abs_of_nonneg]
+
+lemma summable_if_bounded : Summable fun n ↦ (1 / 2) ^ n * min ‖gs n x - gs n y‖ 1 :=
+  Summable.of_norm_bounded (fun n ↦  (1 / 2) ^ n) summable_geometric_two (ourMetric_bdd)
 
 lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
   intro x y
@@ -38,7 +44,7 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
   · intro sum
     rw [ourMetric] at sum
 
-    have sum_zero : ∑' n, (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))  = 0 → ∀ n, (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))  = 0 := by
+    have sum_zero : ∑' n, (1/2)^n * min ‖gs n x - gs n y‖ 1  = 0 → ∀ n, (1/2)^n * min ‖gs n x - gs n y‖ 1  = 0 := by
       have tsum_zero (g : ℕ → ℝ) (h : ∀ (i : ℕ), g i ≥ 0) (h' : Summable g) :
           ∑' (i : ℕ), g i = 0 ↔ ∀ (i : ℕ), g i = 0 := by
         calc
@@ -47,11 +53,11 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
           _ ↔ _ := Function.funext_iff
 
       intro sum
-      let f := fun n ↦ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))
+      let f := fun n ↦ (1/2)^n * min ‖gs n x - gs n y‖ 1
 
       have terms_pos n : f n >= 0 := by positivity
-
-      apply (tsum_zero (fun n ↦ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) terms_pos summable_if_bounded).mp
+      apply (tsum_zero (fun n ↦ (1/2)^n * min ‖gs n x - gs n y‖ 1) (terms_pos) summable_if_bounded).mp
+      --apply (tsum_zero (fun n ↦ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) terms_pos summable_if_bounded).mp
       exact sum
 
     apply sum_zero at sum
@@ -59,10 +65,21 @@ lemma ourMetric_self_iff : ∀ {x y : X}, ourMetric gs x y = 0 ↔ x = y := by
       ne_eq, false_and, norm_eq_zero, sub_eq_zero, false_or] at sum
     contrapose! sum
 
-    have blah n : ¬1 + ‖gs n x - gs n y‖ = 0 := by positivity
+    have blah : ∃ n: ℕ,  min ‖gs n x - gs n y‖ 1 ≠ 0 := by
+      specialize gs_sep sum
+      simp only [Set.mem_range, ne_eq, exists_exists_eq_and] at gs_sep
+      obtain ⟨a, gs_neq⟩ := gs_sep
+      use a
+      by_contra h
+      cases' le_or_lt ‖gs a x - gs a y‖ 1 with h1 h2
+      · rw [min_eq_left_iff.mpr h1, norm_eq_zero, sub_eq_zero] at h
+        simp only [one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff',
+          OfNat.ofNat_ne_zero, ne_eq, false_and, false_or] at *
+        exact gs_neq h
+      · rw [min_eq_right_iff.mpr (LT.lt.le h2)] at h
+        linarith
 
-    --have : ∃ a, gs a ↑x ≠ gs a ↑y := by
-    simpa [Set.mem_range, ne_eq, exists_exists_eq_and, imp_self, sub_eq_zero, blah] using gs_sep sum
+    exact blah
 
   · intro x_eq_y
     simp [ourMetric, one_div, inv_pow, x_eq_y, sub_self, norm_zero, mul_zero, tsum_zero]
@@ -84,46 +101,53 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 
   simp_rw [plusminus_eq_self]
 
-  have tri_ineq' : ∀ a b : 𝕜, ‖a + b‖/(1 + ‖a + b‖) ≤ ‖a‖/(1 + ‖a‖) + ‖b‖/(1 + ‖b‖) := by
+  have min_tri : ∀ a b : 𝕜, min ‖a + b‖ 1 ≤ min ‖a‖ 1 + min ‖b‖ 1 := by
     intro a b
-    have h1 : ‖a + b‖/(1 + ‖a + b‖) ≤ (‖a‖+‖b‖)/(1 + ‖a + b‖) := by
-      have h2 := @div_le_div_right ℝ _ ‖a + b‖ (‖a‖+‖b‖) (1 + ‖a + b‖) (by positivity)
-      rw [h2]
-      exact norm_add_le a b
-    have h2 : (‖a‖+‖b‖)/(1 + ‖a + b‖) ≤ ‖a‖/(1 + ‖a‖) + ‖b‖/(1 + ‖b‖) := by
+    simp only [sub_self, add_zero, implies_true, min_le_iff]
+    cases' le_or_lt ‖a+b‖ 1 with h1 h2
+    · left
+      cases' le_or_lt ‖a‖ 1 with g1 g2
+      · cases' le_or_lt ‖b‖ 1 with j1 j2
+        · rw [min_eq_left_iff.mpr g1, min_eq_left_iff.mpr j1]
+          exact norm_add_le a b
+        · rw [min_eq_left_iff.mpr g1, min_eq_right_iff.mpr (LT.lt.le j2), add_comm ‖a‖ 1]
+          exact le_add_of_le_of_nonneg h1 (by positivity)
 
-      simp_all only [sub_self, add_zero, implies_true]
+      · cases' le_or_lt ‖b‖ 1 with j1 j2
+        · rw [min_eq_right_iff.mpr (LT.lt.le g2), min_eq_left_iff.mpr j1]
+          exact le_add_of_le_of_nonneg h1 (by positivity)
+        · rw [min_eq_right_iff.mpr (LT.lt.le g2), min_eq_right_iff.mpr (LT.lt.le j2)]
+          linarith
 
-      sorry
+    · right
+      cases' le_or_lt ‖a‖ 1 with g1 g2
+      · cases' le_or_lt ‖b‖ 1 with j1 j2
+        · rw [min_eq_left_iff.mpr g1, min_eq_left_iff.mpr j1]
+          linarith [norm_add_le a b]
+
+        · rw [min_eq_left_iff.mpr g1, min_eq_right_iff.mpr (LT.lt.le j2), add_comm ‖a‖ 1]
+          norm_num
+
+      · cases' le_or_lt ‖b‖ 1 with j1 j2
+        · rw [min_eq_right_iff.mpr (LT.lt.le g2), min_eq_left_iff.mpr j1]
+          norm_num
+        · rw [min_eq_right_iff.mpr (LT.lt.le g2), min_eq_right_iff.mpr (LT.lt.le j2)]
+          linarith
 
 
 
-    have h3 : (‖a‖+‖b‖)/(1 + ‖a + b‖) ≤ ‖a‖ / (1 + ‖a‖) + ‖b‖ / (1 + ‖b‖) := by
-      have tri := @norm_add_le 𝕜 _ a b
-
-      simp_all only [sub_self, add_zero, implies_true, ge_iff_le]
-
-
-
-
-
-    exact
-      Preorder.le_trans (‖a + b‖ / (1 + ‖a + b‖)) ((‖a‖ + ‖b‖) / (1 + ‖a + b‖))
-        (‖a‖ / (1 + ‖a‖) + ‖b‖ / (1 + ‖b‖)) h1 h3
-
-
-  have tri_ineq : ∀ n, (1/2)^n * (‖gs n x  - gs n z‖ / (1 + ‖gs n x - gs n z‖))  ≤ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (1/2)^n * (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖)) := by
+  have tri_ineq : ∀ n, (1/2)^n * min ‖gs n x - gs n z‖ 1  ≤ (1/2)^n * min ‖gs n x - gs n y‖ 1 + (1/2)^n * min ‖gs n y - gs n z‖ 1 := by
     intro n
-    simp only [← mul_add]
-    --@le_of_mul_le_mul_left ℝ ((1/2)^n) (‖gs n x  - gs n z‖ / (1 + ‖gs n x - gs n z‖)) ((‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (1/2)^n * (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖))) _ _ _ _
-    apply (@mul_le_mul_left ℝ ((1/2)^n) (‖gs n x  - gs n z‖ / (1 + ‖gs n x - gs n z‖)) ((‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖))) _ _ _ _ _ (by positivity)).mpr
-    simp_all only [plusminus_eq_self]
+    rw [← mul_add]
+    apply (mul_le_mul_left _).mpr
+    simp only [plusminus_eq_self]
     rw [← add_comm_sub, add_sub_assoc (gs n x - gs n y) (gs n y) (gs n z)]
-    apply tri_ineq'
+    apply min_tri
+    positivity
 
 
-  have := @tsum_add ℝ ℕ _ _ (fun n ↦ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) (fun n ↦ (1/2)^n * (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖))) _ _ summable_if_bounded summable_if_bounded
-  simp only [inv_pow] at this
+  have := @tsum_add ℝ ℕ _ _ (fun n ↦ (1/2)^n * min ‖gs n x - gs n y‖ 1) (fun n ↦ (1/2)^n * min ‖gs n y - gs n z‖ 1) _ _ --summable_if_bounded summable_if_bounded
+  --simp only [inv_pow] at this
   rw [← this]
   simp only [← mul_add]
   apply tsum_le_tsum
@@ -135,9 +159,9 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
   · simp only [mul_add]
     exact Summable.add summable_if_bounded summable_if_bounded
 
+  exact summable_if_bounded
+  exact summable_if_bounded
 
-#check tsum_add
-#check Preorder 𝕜
 noncomputable def ourMetricSpace : MetricSpace X where
   dist := ourMetric gs
   dist_self := by
@@ -169,29 +193,33 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (
     ourMetric gs p.1 p.2) := by
 
   apply @continuous_tsum ℕ (X × X) ℝ _ _ (fun (n : ℕ) ↦ (1 / 2) ^ n) _
-      (fun n ↦ fun (x, y) ↦ (1 / 2) ^ n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) ?_ (summable_geometric_two) ?_
+      (fun n ↦ fun (x, y) ↦ (1 / 2) ^ n * min ‖gs n x - gs n y‖ 1) ?_ (summable_geometric_two) ?_
   · intro i
     simp only [one_div, inv_pow]
-    have cont_xy : Continuous (fun (x,y) ↦ ‖gs i x - gs i y‖) := by
+    have cont_xy : ∀ i : ℕ, Continuous (fun (x,y) ↦ ‖gs i x - gs i y‖) := by
+      intro i
       have : Continuous (fun (x,y) ↦ gs i x - gs i y) := by
         have := Continuous.add (by exact Continuous.fst' (gs_cont i)) (Continuous.snd' (Continuous.neg (gs_cont i)))
         ring_nf at this
         exact this
 
       exact Continuous.norm this
-
-    exact Continuous.mul continuous_const (by
-      simp at cont_xy
-      apply Continuous.div cont_xy (Continuous.add continuous_const cont_xy ) (by intro _; positivity)
-    )
+    have foo n := @Continuous.min ℝ (X×X) _ _ _ (fun (x,y) ↦ ‖gs n x - gs n y‖) (fun (_,_) ↦ 1) _ (cont_xy n) (continuous_const)
+    simp at foo
+    have loo n := @Continuous.mul ℝ (X×X) _ _ _ _ (fun x ↦ (1 / 2) ^ n) (fun (x,y) ↦ min ‖gs n x - gs n y‖ 1) (continuous_const) (foo n)
+    simp at loo
+    simp_all only [implies_true]
 
   · simp only [inv_pow, norm_mul, norm_inv, norm_pow, RCLike.norm_ofNat, norm_norm,
     Prod.forall]
     intro n a b
     simp only [one_div, norm_inv, RCLike.norm_ofNat, inv_pow, mul_comm]
     rw [mul_le_iff_le_one_left]
-    · simpa [add_nonneg, abs_of_nonneg] using foo (norm_nonneg (gs n a - gs n b))
-
+    · have min_pos := (@le_min_iff ℝ _ ‖gs n a - gs n b‖ 1 0).mpr (by refine ⟨by positivity, by positivity⟩)
+      simp only [Real.norm_eq_abs, abs_of_nonneg min_pos]
+      rw [min_le_iff]
+      right
+      rfl
     · simp only [inv_pos, Nat.ofNat_pos, pow_pos]
 
 lemma cont_ourMetric' (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
