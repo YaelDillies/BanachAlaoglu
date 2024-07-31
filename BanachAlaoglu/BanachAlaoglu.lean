@@ -84,18 +84,60 @@ lemma ourMetric_triangle : ∀ x y z : X, ourMetric gs x z ≤ ourMetric gs x y 
 
   simp_rw [plusminus_eq_self]
 
-  have tri_ineq : ∀ n, (1/2)^n * ‖gs n x + (gs n y - gs n y) - gs n z‖  ≤ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (1/2)^n * ‖gs n y - gs n z‖  := by
+  have tri_ineq' : ∀ a b : 𝕜, ‖a + b‖/(1 + ‖a + b‖) ≤ ‖a‖/(1 + ‖a‖) + ‖b‖/(1 + ‖b‖) := by
+    intro a b
+    have h1 : ‖a + b‖/(1 + ‖a + b‖) ≤ (‖a‖+‖b‖)/(1 + ‖a + b‖) := by
+      have h2 := @div_le_div_right ℝ _ ‖a + b‖ (‖a‖+‖b‖) (1 + ‖a + b‖) (by positivity)
+      rw [h2]
+      exact norm_add_le a b
+    have h2 : (‖a‖+‖b‖)/(1 + ‖a + b‖) ≤ ‖a‖/(1 + ‖a‖) + ‖b‖/(1 + ‖b‖) := by
+
+      simp_all only [sub_self, add_zero, implies_true]
+
+      sorry
+
+
+
+    have h3 : (‖a‖+‖b‖)/(1 + ‖a + b‖) ≤ ‖a‖ / (1 + ‖a‖) + ‖b‖ / (1 + ‖b‖) := by
+      have tri := @norm_add_le 𝕜 _ a b
+
+      simp_all only [sub_self, add_zero, implies_true, ge_iff_le]
+
+
+
+
+
+    exact
+      Preorder.le_trans (‖a + b‖ / (1 + ‖a + b‖)) ((‖a‖ + ‖b‖) / (1 + ‖a + b‖))
+        (‖a‖ / (1 + ‖a‖) + ‖b‖ / (1 + ‖b‖)) h1 h3
+
+
+  have tri_ineq : ∀ n, (1/2)^n * (‖gs n x  - gs n z‖ / (1 + ‖gs n x - gs n z‖))  ≤ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (1/2)^n * (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖)) := by
     intro n
-    rw [← add_comm_sub, add_sub_assoc (gs n x - gs n y) (gs n y) (gs n z) , ← mul_add]
-    refine (mul_le_mul_left ?_).mpr ?_
-    · refine pow_pos ?refine_1.H n
-      linarith
-    · sorry
-
-  sorry
-
+    simp only [← mul_add]
+    --@le_of_mul_le_mul_left ℝ ((1/2)^n) (‖gs n x  - gs n z‖ / (1 + ‖gs n x - gs n z‖)) ((‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (1/2)^n * (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖))) _ _ _ _
+    apply (@mul_le_mul_left ℝ ((1/2)^n) (‖gs n x  - gs n z‖ / (1 + ‖gs n x - gs n z‖)) ((‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖)) + (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖))) _ _ _ _ _ (by positivity)).mpr
+    simp_all only [plusminus_eq_self]
+    rw [← add_comm_sub, add_sub_assoc (gs n x - gs n y) (gs n y) (gs n z)]
+    apply tri_ineq'
 
 
+  have := @tsum_add ℝ ℕ _ _ (fun n ↦ (1/2)^n * (‖gs n x - gs n y‖ / (1 + ‖gs n x - gs n y‖))) (fun n ↦ (1/2)^n * (‖gs n y - gs n z‖ / (1 + ‖gs n y - gs n z‖))) _ _ summable_if_bounded summable_if_bounded
+  simp only [inv_pow] at this
+  rw [← this]
+  simp only [← mul_add]
+  apply tsum_le_tsum
+  · intro i
+    rw [← plusminus_eq_self, mul_add]
+    exact tri_ineq i
+  · simp only [inv_pow, sub_self, add_zero]
+    exact summable_if_bounded
+  · simp only [mul_add]
+    exact Summable.add summable_if_bounded summable_if_bounded
+
+
+#check tsum_add
+#check Preorder 𝕜
 noncomputable def ourMetricSpace : MetricSpace X where
   dist := ourMetric gs
   dist_self := by
@@ -138,7 +180,10 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) : Continuous (
 
       exact Continuous.norm this
 
-    exact Continuous.mul continuous_const (by sorry)
+    exact Continuous.mul continuous_const (by
+      simp at cont_xy
+      apply Continuous.div cont_xy (Continuous.add continuous_const cont_xy ) (by intro _; positivity)
+    )
 
   · simp only [inv_pow, norm_mul, norm_inv, norm_pow, RCLike.norm_ofNat, norm_norm,
     Prod.forall]
@@ -158,8 +203,7 @@ example (X Y Z : Type*) [TopologicalSpace X] [TopologicalSpace Y] [TopologicalSp
   exact Continuous.along_snd hphi
 
 lemma cont_kopio_mk (X :Type*) [TopologicalSpace X] [CompactSpace X] (gs : ℕ → X → 𝕜)
-    (gs_sep : Set.SeparatesPoints (Set.range gs))
-    (gs_cont : ∀ n, Continuous (gs n)) :
+    (gs_sep : Set.SeparatesPoints (Set.range gs)) (gs_cont : ∀ n, Continuous (gs n)) :
     Continuous (kopio.mk X gs gs_sep) := by
   apply Metric.continuous_iff'.mpr
   intro x ε hε
@@ -281,19 +325,19 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall [SequentialSpace V] (x' : NormedSpace.Dual 𝕜 V) (r : ℝ) :
     IsSeqCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
-
-  have b_isCompact : IsCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
+  let b := (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
+  have b_isCompact : IsCompact b := by
     apply WeakDual.isCompact_closedBall
-  have b_isCompact' : CompactSpace (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
+  have b_isCompact' : CompactSpace b := by
     exact isCompact_iff_compactSpace.mp b_isCompact
 
-  have b_isMetrizable : TopologicalSpace.MetrizableSpace (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) := by
-    exact subset_metrizable 𝕜 V (⇑toNormedDual ⁻¹' Metric.closedBall x' r) b_isCompact
+  have b_isMetrizable : TopologicalSpace.MetrizableSpace b := by
+    exact subset_metrizable 𝕜 V b b_isCompact
 
-  have seq_cpt_space := @FirstCountableTopology.seq_compact_of_compact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r)
+  have seq_cpt_space := @FirstCountableTopology.seq_compact_of_compact b
       _ _ b_isCompact'
 
-  have seq_cont_phi : SeqContinuous (fun φ : (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) ↦ (φ : WeakDual 𝕜 V)) := by
+  have seq_cont_phi : SeqContinuous (fun φ : b ↦ (φ : WeakDual 𝕜 V)) := by
     refine continuous_iff_seqContinuous.mp ?_
     exact continuous_subtype_val
 
