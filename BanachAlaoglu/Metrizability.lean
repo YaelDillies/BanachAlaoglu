@@ -41,7 +41,7 @@ lemma ourMetric_comm {x y} : ourMetric gs x y = ourMetric gs y x := by
   intro b
   rw [dist_comm]
 
-lemma ourMetric_triangle {x y z} :ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
+lemma ourMetric_triangle {x y z} : ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
   unfold ourMetric
   have tri_ineq n : (1/2)^n * min (dist (gs n x) (gs n z)) 1
       ≤ (1/2)^n * min (dist (gs n x) (gs n y)) 1 + (1/2)^n * min (dist (gs n y) (gs n z)) 1 := by
@@ -103,9 +103,8 @@ lemma ourMetric_triangle {x y z} :ourMetric gs x z ≤ ourMetric gs x y + ourMet
 
   rw [← tsum_add]
   apply tsum_le_tsum
-  · intro i
-    simpa [mul_add] using tri_ineq i
-  · simpa [inv_pow, sub_self, add_zero] using summable_if_bounded
+  · exact fun i ↦ tri_ineq i
+  · exact summable_if_bounded
   · simpa [mul_add] using Summable.add summable_if_bounded summable_if_bounded
   exact summable_if_bounded
   exact summable_if_bounded
@@ -140,7 +139,7 @@ lemma cont_ourMetric (gs_cont : ∀ (n : ℕ), Continuous (gs n)) :
     intro n a b
     rw [one_div, norm_inv, RCLike.norm_ofNat, inv_pow, mul_comm, mul_le_iff_le_one_left]
     · have min_pos := (le_min_iff (a := dist (gs n a) (gs n b)) (b := 1) (c := 0)).mpr
-        (by refine ⟨by positivity, by positivity⟩)
+          (by refine ⟨by positivity, by positivity⟩)
       simp only [Real.norm_eq_abs, abs_of_nonneg min_pos, min_le_iff]
       right
       rfl
@@ -189,13 +188,11 @@ lemma ourMetric_self' {x y} : ourMetric gs x y = 0 → x = y := by
     ne_eq, false_and, norm_eq_zero, sub_eq_zero, false_or] at sum
   contrapose! sum
   specialize gs_sep sum
-  simp only [Set.mem_range, ne_eq, exists_exists_eq_and] at gs_sep
   obtain ⟨a, gs_neq⟩ := gs_sep
   use a
   by_contra h
   cases' le_or_lt (dist (gs a x) (gs a y)) 1 with h1 h2
-  · rw [min_eq_left_iff.mpr h1, dist_eq_zero] at h
-    simp only [one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff',
+  · simp only [min_eq_left_iff.mpr h1, dist_eq_zero, one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff',
       OfNat.ofNat_ne_zero, ne_eq, false_and, false_or] at *
     exact gs_neq h
   · linarith [min_eq_right_iff.mpr (LT.lt.le h2)]
@@ -241,26 +238,23 @@ variable (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
 
 lemma cont_metricCopy_toOrigin (gs_cont : ∀ n, Continuous (gs n)) :
     Continuous (metricCopy.toOrigin X gs gs_sep) := by
-  have symm : ∀ (s : Set X),
-      metricCopy.toOrigin X gs gs_sep ⁻¹' s = metricCopy.mk X gs gs_sep '' s :=
-    fun s ↦ Eq.symm (Set.EqOn.image_eq_self fun ⦃x⦄ ↦ congrFun rfl)
-  have closed_impl : ∀ (s : Set X),
-      IsClosed s → IsClosed (metricCopy.toOrigin X gs gs_sep ⁻¹' s) := by
-    intro M M_closed
-    have M_cpt_X := IsClosed.isCompact M_closed
-    rw [isCompact_iff_finite_subcover] at M_cpt_X
+  have symm (s : Set X) : metricCopy.toOrigin X gs gs_sep ⁻¹' s = metricCopy.mk X gs gs_sep '' s :=
+    Eq.symm (Set.EqOn.image_eq_self fun ⦃x⦄ ↦ congrFun rfl)
+  have closed_impl (s : Set X) : IsClosed s → IsClosed (metricCopy.toOrigin X gs gs_sep ⁻¹' s) := by
+    intro s_closed
+    have s_cpt_X := IsClosed.isCompact s_closed
+    rw [isCompact_iff_finite_subcover] at s_cpt_X
     have open_preimage s : IsOpen s → IsOpen (metricCopy.mk X gs gs_sep ⁻¹' s) :=
       continuous_def.mp (cont_metricCopy_mk gs_sep gs_cont) s
-    have closed_preimage_M : IsClosed (metricCopy.toOrigin X gs gs_sep ⁻¹' M) := by
-      have M_image_cpt : IsCompact (metricCopy.mk X gs gs_sep '' M) := by
+    have closed_preimage_s : IsClosed (metricCopy.toOrigin X gs gs_sep ⁻¹' s) := by
+      have s_image_cpt : IsCompact (metricCopy.mk X gs gs_sep '' s) := by
         apply isCompact_of_finite_subcover
         intro _ Us Usi_open
         simp only [metricCopy.mk, id_eq, Set.image_id']
-        exact fun a ↦ M_cpt_X Us (fun i ↦ open_preimage (Us i) (Usi_open i)) a
-      simpa [symm M] using IsCompact.isClosed M_image_cpt
-
-    exact closed_preimage_M
-  simpa [← continuous_iff_isClosed (f := metricCopy.toOrigin X gs gs_sep)] using closed_impl
+        exact fun a ↦ s_cpt_X Us (fun i ↦ open_preimage (Us i) (Usi_open i)) a
+      simpa [symm s] using IsCompact.isClosed s_image_cpt
+    exact closed_preimage_s
+  exact continuous_iff_isClosed.mpr closed_impl
 
 noncomputable def homeomorph_OurMetric :
   X ≃ₜ metricCopy X gs gs_sep where
@@ -281,5 +275,3 @@ lemma X_metrizable (gs : ∀ n, X → E n) (gs_cont : ∀ n, Continuous (gs n))
 end metrizable_of_compactSpace
 
 end Metrizability_lemma
-
-#min_imports

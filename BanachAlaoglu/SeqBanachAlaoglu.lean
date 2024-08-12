@@ -2,7 +2,9 @@
 import BanachAlaoglu.Metrizability
 import Mathlib.Topology.Algebra.UniformField
 import Mathlib.Analysis.Normed.Module.WeakDual
+import Mathlib.Topology.Defs.Filter
 
+open Topology
 section Seq_Banach_Alaoglu
 variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [ProperSpace 𝕜]
 variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace 𝕜 V]
@@ -51,9 +53,15 @@ theorem WeakDual.isSeqCompact_of_isClosed_of_isBounded {s : Set (WeakDual 𝕜 V
   convert IsSeqCompact.range seq_cont_phi
   simp [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
 
+theorem WeakDual.isSeqCompact_polar [ProperSpace 𝕜] {s : Set V} (s_nhd : s ∈ 𝓝 (0 : V)) :
+    IsSeqCompact (polar 𝕜 s) :=
+  WeakDual.isSeqCompact_of_isClosed_of_isBounded (s := polar 𝕜 s) (NormedSpace.isBounded_polar_of_mem_nhds_zero 𝕜 s_nhd) (isClosed_polar _ _)
+
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual 𝕜 V) (r : ℝ) :
     IsSeqCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) :=
   @WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 _ _ V _ _ _ (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) Metric.isBounded_closedBall (isClosed_closedBall x' r)
+
+
 
 end Seq_Banach_Alaoglu
