@@ -1,9 +1,6 @@
 
 import Mathlib
 
-section assumption_on_the_normed_field
-
-
 open Function
 
 section Metrizability_lemma
@@ -163,12 +160,10 @@ noncomputable def ourMetricSpace : MetricSpace X where
 def kopio (X :Type*) (gs : ∀n, X → E n) (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
     := X
 
-def kopio.mk (X :Type*) (gs : ∀n, X → E n) (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
-    :
+def kopio.mk (X :Type*) (gs : ∀n, X → E n) (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
     X → kopio X gs gs_sep := id
 
-def kopio.toOrigin (X :Type*) (gs : ∀n, X → E n) (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
-    :
+def kopio.toOrigin (X :Type*) (gs : ∀n, X → E n) (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
     kopio X gs gs_sep → X := id
 
 noncomputable instance : MetricSpace (kopio X gs gs_sep) := ourMetricSpace gs_sep
@@ -244,13 +239,13 @@ lemma cont_kopio_toOrigin (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ 
       specialize this s
       exact this
     have : IsClosed (kopio.toOrigin X gs gs_sep ⁻¹' M) := by
-      simp only [symm M]
+      --simp only [symm M]
       have M_image_cpt : IsCompact (kopio.mk X gs gs_sep '' M) := by
         apply isCompact_of_finite_subcover
         intro _ Us Usi_open
         simp only [kopio.mk, id_eq, Set.image_id']
         exact fun a ↦ M_cpt_X Us (fun i ↦ this (Us i) (Usi_open i)) a
-      exact IsCompact.isClosed M_image_cpt
+      simpa [symm M] using IsCompact.isClosed M_image_cpt
     exact this
   have cont_iff_closed := @continuous_iff_isClosed (kopio X gs gs_sep) X _ _ (kopio.toOrigin X gs gs_sep)
   rw [← cont_iff_closed] at this
@@ -350,7 +345,11 @@ theorem WeakDual.isSeqCompact_closedBall [SequentialSpace V] (x' : NormedSpace.D
   simp only [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
   rfl
 
+example : WeakDual 𝕜 V = (V →L[𝕜] 𝕜) := rfl
+
 end Seq_Banach_Alaoglu
+
+
 
 section inf_dim
 variable {X 𝕜: Type*} [NormedAddCommGroup X] [NormedField 𝕜] [NormedSpace 𝕜 X] [CompleteSpace X]
@@ -388,3 +387,6 @@ lemma dual_not_metrizable : ¬TopologicalSpace.MetrizableSpace (WeakDual 𝕜 X)
 #check Filter.isCountablyGenerated_iff_exists_antitone_basis
 #check NormedSpace 𝕜
 end inf_dim
+
+
+#help tactic
