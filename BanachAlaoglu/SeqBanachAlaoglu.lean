@@ -38,6 +38,39 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
     apply gs_sep
     exact Subtype.coe_ne_coe.mpr x_ne_y
 
+variable {E F : Type*}
+variable [NormedAddCommGroup E] [NormedAddCommGroup F] [NormedAddCommGroup G]
+  [NormedAddCommGroup Fₗ]
+
+variable [NontriviallyNormedField 𝕜] [NontriviallyNormedField 𝕜₂] [NontriviallyNormedField 𝕜₃]
+  [NormedSpace 𝕜 E] [NormedSpace 𝕜₂ F] [NormedSpace 𝕜₃ G] [NormedSpace 𝕜 Fₗ] (c : 𝕜)
+  {σ₁₂ : 𝕜 →+* 𝕜₂} {σ₂₃ : 𝕜₂ →+* 𝕜₃} (f g : E →SL[σ₁₂] F) (x y z : E)
+variable {E' : Type*} [SeminormedAddCommGroup E'] [NormedSpace 𝕜 E'] [RingHomIsometric σ₁₂]
+
+theorem ContinuousLinearMap.isSeqCompact_closure_image_coe_of_bounded [ProperSpace F] {s : Set (E' →SL[σ₁₂] F)}
+    (hb : Bornology.IsBounded s) : IsSeqCompact (closure (((↑) : (E' →SL[σ₁₂] F) → E' → F) '' s)) := by
+
+  sorry
+
+  /-have : ∀ x, IsSeqCompact (closure (apply' F σ₁₂ x '' s)) := by
+    exact fun x => ((apply' F σ₁₂ x).lipschitz.isBounded_image hb).isCompact_closure
+  (isCompact_pi_infinite this).closure_of_subset
+    (Set.image_subset_iff.2 fun _ hg _ => subset_closure <| Set.mem_image_of_mem _ hg)
+-/
+
+variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [ProperSpace 𝕜]
+variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace 𝕜 V]
+variable [TopologicalSpace.SeparableSpace V]
+variable (K : Set (WeakDual 𝕜 V)) (K_cpt : IsCompact K)
+
+
+theorem isSeqCompact_image_coe_of_bounded_of_closed_image [ProperSpace F] {s : Set (E' →SL[σ₁₂] F)}
+    (hb : Bornology.IsBounded s) (hc : IsClosed (((↑) : (E' →SL[σ₁₂] F) → E' → F) '' s)) :
+    IsSeqCompact (((↑) : (E' →SL[σ₁₂] F) → E' → F) '' s) := by
+  --exact hc.closure_eq ▸ ContinuousLinearMap.isSeqCompact_closure_image_coe_of_bounded hb
+  sorry
+
+
 theorem WeakDual.isSeqCompact_of_isClosed_of_isBounded {s : Set (WeakDual 𝕜 V)}
     (hb : Bornology.IsBounded (NormedSpace.Dual.toWeakDual ⁻¹' s)) (hc : IsClosed s) :
     IsSeqCompact s := by
