@@ -1,19 +1,16 @@
-import Mathlib.Topology.CompletelyRegular
-import Mathlib.Analysis.RCLike.Basic
-import Mathlib.Data.Complex.Abs
-import Mathlib.Data.Real.StarOrdered
-import Mathlib.Topology.MetricSpace.Polish
-import Mathlib.Analysis.Normed.Order.Lattice
+
+import Mathlib.Analysis.NormedSpace.FunctionSeries
+import Mathlib.Analysis.SpecificLimits.Basic
+
+-- TODO: Tag in mathlib
+attribute [simp] abs_mul abs_inv
 
 open Function
 
-section Metrizability_lemma
+variable {X : Type*} {E : ℕ → Type*}
 
-variable {X : Type*} {E : ℕ → Type*} [TopologicalSpace X] [∀ n, PseudoMetricSpace (E n)]
-variable (gs : ∀ n, X → E n)
-variable (gs_continuous : ∀ n, Continuous (gs n))
-
-section PseudoMetric
+section PseudoMetricSpace
+variable [∀ n, PseudoMetricSpace (E n)] (gs : ∀ n, X → E n)
 
 /- Define metric -/
 private noncomputable def ourMetric (x y : X) : ℝ :=
@@ -21,7 +18,8 @@ private noncomputable def ourMetric (x y : X) : ℝ :=
 
 variable {gs}
 
-/- Prove requirements of pseudometricspace: `ourMetric_self`, `ourMetric_comm` and `ourMetric_triangle`. -/
+/- Prove requirements of pseudometricspace: `ourMetric_self`, `ourMetric_comm` and
+`ourMetric_triangle`. -/
 lemma ourMetric_self {x y} : x = y → ourMetric gs x y = 0 := by
   intro x_eq_y
   simp [ourMetric, one_div, inv_pow, x_eq_y, sub_self, norm_zero, mul_zero, tsum_zero]
@@ -36,8 +34,8 @@ lemma ourMetric_comm {x y} : ourMetric gs x y = ourMetric gs y x := by
 lemma ourMetric_bdd {x y} : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * min (dist (gs n x) (gs n y)) 1) i‖
   ≤ (fun n ↦ (1 / 2) ^ n) i) := by
   intro i
-  simp only [one_div, inv_pow, norm_mul, norm_inv, norm_pow, RCLike.norm_ofNat, Real.norm_eq_abs,
-    inv_pos, Nat.ofNat_pos, pow_pos, mul_le_iff_le_one_right]
+  simp only [one_div, inv_pow, Real.norm_eq_abs, abs_mul, abs_inv, abs_pow, Nat.abs_ofNat, inv_pos,
+    Nat.ofNat_pos, pow_pos, mul_le_iff_le_one_right]
   rw [abs_of_nonneg (by positivity)]
   exact min_le_right (dist (gs i x) (gs i y)) 1
 
@@ -113,6 +111,7 @@ lemma ourMetric_triangle {x y z} : ourMetric gs x z ≤ ourMetric gs x y + ourMe
   exact summable_if_bounded
   exact summable_if_bounded
 
+set_option linter.unusedVariables false in
 /- Create a copy of the space `X` without the typeclass instances. -/
 def pseudoMetricCopy (X : Type*) (gs : ∀n, X → E n) := X
 
@@ -131,50 +130,43 @@ def pseudoMetricCopy.mk (X : Type*) (gs : ∀n, X → E n) :
 def pseudoMetricCopy.toOrigin (X : Type*) (gs : ∀n, X → E n) :
     pseudoMetricCopy X gs → X := id
 
-/- Prove continuity of the metric `ourMetric`. -/
-lemma continuous_ourMetric (gs_continuous : ∀ (n : ℕ), Continuous (gs n)) :
-    Continuous (fun (p : X × X) ↦ ourMetric gs p.1 p.2) := by
-  apply @continuous_tsum ℕ (X × X) ℝ _ _ (fun (n : ℕ) ↦ (1 / 2) ^ n) _
-    (fun n ↦ fun (x, y) ↦ (1 / 2) ^ n * min (dist (gs n x) (gs n y)) 1)
-    ?_ (summable_geometric_two) ?_
-  · intro i
-    have continuous_xy i := Continuous.dist (Continuous.fst' (gs_continuous i)) (Continuous.snd' ((gs_continuous i)))
-    have continuous_min n := Continuous.min (g := (fun (_,_) ↦ 1)) (continuous_xy n) (continuous_const)
-    exact Continuous.mul (f := (fun _ ↦ (1 / 2) ^ i)) (continuous_const) (continuous_min i)
-  · simp only [inv_pow, norm_mul, norm_inv, norm_pow, RCLike.norm_ofNat, norm_norm,
-    Prod.forall]
-    intro n a b
-    rw [one_div, norm_inv, RCLike.norm_ofNat, inv_pow, mul_comm, mul_le_iff_le_one_left]
-    · have min_pos := (le_min_iff (a := dist (gs n a) (gs n b)) (b := 1) (c := 0)).mpr
-          (by refine ⟨by positivity, by positivity⟩)
-      simp only [Real.norm_eq_abs, abs_of_nonneg min_pos, min_le_iff]
-      right
-      rfl
-    · simp
+section continuity
+variable [TopologicalSpace X] (gs_continuous : ∀ n, Continuous (gs n))
 
-lemma continuous_ourMetric' (gs_continuous : ∀ (n : ℕ), Continuous (gs n)) : Continuous (fun (p : X × X) ↦
-    dist (pseudoMetricCopy.mk X gs p.1) (pseudoMetricCopy.mk X gs p.2)) := continuous_ourMetric gs_continuous
+/- Prove continuity of the metric `ourMetric`. -/
+lemma continuous_ourMetric (gs_continuous : ∀ n, Continuous (gs n)) :
+    Continuous (fun (p : X × X) ↦ ourMetric gs p.1 p.2) := by
+  unfold ourMetric
+  refine continuous_tsum (by fun_prop) summable_geometric_two ?_
+  simp only [one_div, inv_pow, abs_mul, abs_inv, abs_pow, Real.norm_eq_abs, Nat.abs_ofNat,
+    inv_pos, Nat.ofNat_pos, pow_pos, mul_le_iff_le_one_right, Prod.forall]
+  intro n a b
+  rw [abs_of_nonneg (by positivity)]
+  exact min_le_right _ _
+
+lemma continuous_ourMetric' (gs_continuous : ∀ n, Continuous (gs n)) :
+    Continuous (fun (p : X × X) ↦
+    dist (pseudoMetricCopy.mk X gs p.1) (pseudoMetricCopy.mk X gs p.2)) :=
+  continuous_ourMetric gs_continuous
 
 /- Prove continuity of `pseudoMetricCopy.mk`. -/
 lemma continuous_pseudoMetricCopy_mk (gs_continuous : ∀ n, Continuous (gs n)) :
-    Continuous (pseudoMetricCopy.mk X gs) := by
-  apply Metric.continuous_iff'.mpr
-  intro x ε hε
-  have continuous_dist : Continuous (fun y ↦ dist (pseudoMetricCopy.mk X gs y)
-      (pseudoMetricCopy.mk X gs x)) := Continuous.along_fst (continuous_ourMetric' gs_continuous)
-  have := @IsOpen.mem_nhds X x _ _ (continuous_dist.isOpen_preimage _ isOpen_Iio) (by simpa using hε)
-  filter_upwards [this] with y hy using hy
+    Continuous (pseudoMetricCopy.mk X gs) :=
+  continuous_iff_continuous_dist.2 (continuous_ourMetric' gs_continuous)
+
+end continuity
+end PseudoMetricSpace
 
 section Metric
 
-/- Further assume thath the codomains of functions `gs` are metric spaces,
+/- Further assume that the codomains of functions `gs` are metric spaces,
 and that `gs` separates points on `X`. -/
 variable {E : ℕ → Type*} [∀ n, MetricSpace (E n)]
 variable {gs : ∀ n, X → E n}
-variable (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
 
 /- Prove requirement of a metric space `ourMetric_self'`. -/
-lemma ourMetric_self' {x y} : ourMetric gs x y = 0 → x = y := by
+lemma ourMetric_self' (gs_sep : (∀ ⦃x y⦄, x ≠ y → ∃ n, gs n x ≠ gs n y)) {x y} :
+    ourMetric gs x y = 0 → x = y := by
   intro sum
   rw [ourMetric] at sum
   have sum_zero : ∑' n, (1/2)^n * min (dist (gs n x) (gs n y)) 1 = 0 →
@@ -200,14 +192,16 @@ lemma ourMetric_self' {x y} : ourMetric gs x y = 0 → x = y := by
   use a
   by_contra h
   cases' le_or_lt (dist (gs a x) (gs a y)) 1 with h1 h2
-  · simp only [min_eq_left_iff.mpr h1, dist_eq_zero, one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff',
-      OfNat.ofNat_ne_zero, ne_eq, false_and, false_or] at *
+  · simp only [min_eq_left_iff.mpr h1, dist_eq_zero, one_div, inv_pow, mul_eq_zero, inv_eq_zero,
+      pow_eq_zero_iff', OfNat.ofNat_ne_zero, ne_eq, false_and, false_or] at *
     exact gs_neq h
   · linarith [min_eq_right_iff.mpr (LT.lt.le h2)]
 
 /- Create a copy of the space `pseudoMetricCopy` without the typeclass instances. -/
 def metricCopy (X : Type*) (gs : ∀n, X → E n) (_ : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :=
     pseudoMetricCopy X gs
+
+variable (gs_sep : (∀ ⦃x y⦄, x ≠ y → ∃ n, gs n x ≠ gs n y))
 
 /- Define a pseudometric space on the space `metricCopy`. -/
 noncomputable instance pseudoMetricSpace_metricCopy : PseudoMetricSpace (metricCopy X gs gs_sep) :=
@@ -233,6 +227,8 @@ def metricCopy.toOrigin (X : Type*) (gs : ∀n, X → E n)
 /- Define a metric space on the space `metricCopy`. -/
 noncomputable instance metricSpace_metricCopy : MetricSpace (metricCopy X gs gs_sep) where
   eq_of_dist_eq_zero := ourMetric_self' gs_sep
+
+variable [TopologicalSpace X]
 
 /- Prove continuity of `metricCopy.mk` using the isometry defined above. -/
 lemma continuous_metricCopy_mk (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
@@ -285,10 +281,5 @@ lemma X_metrizable (gs : ∀ n, X → E n) (gs_continuous : ∀ n, Continuous (g
     TopologicalSpace.MetrizableSpace X :=
     (homeomorph_OurMetric gs_continuous gs_sep).embedding.metrizableSpace
 
-
 end Metrizable_of_compactSpace
 end Metric
-end PseudoMetric
-end Metrizability_lemma
-
-#min_imports
