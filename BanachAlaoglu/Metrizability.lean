@@ -1,5 +1,9 @@
 import Mathlib.Topology.CompletelyRegular
-
+import Mathlib.Analysis.RCLike.Basic
+import Mathlib.Data.Complex.Abs
+import Mathlib.Data.Real.StarOrdered
+import Mathlib.Topology.MetricSpace.Polish
+import Mathlib.Analysis.Normed.Order.Lattice
 
 open Function
 
@@ -286,3 +290,5 @@ end Metrizable_of_compactSpace
 end Metric
 end PseudoMetric
 end Metrizability_lemma
+
+#min_imports
