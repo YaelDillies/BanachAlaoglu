@@ -1,9 +1,5 @@
 import Mathlib.Topology.CompletelyRegular
-import Mathlib.Analysis.RCLike.Basic
-import Mathlib.Data.Complex.Abs
-import Mathlib.Data.Real.StarOrdered
-import Mathlib.Topology.MetricSpace.Polish
-import Mathlib.Analysis.Normed.Order.Lattice
+
 
 open Function
 
@@ -284,6 +280,7 @@ lemma X_metrizable (gs : ∀ n, X → E n) (gs_continuous : ∀ n, Continuous (g
     (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
     TopologicalSpace.MetrizableSpace X :=
     (homeomorph_OurMetric gs_continuous gs_sep).embedding.metrizableSpace
+
 
 end Metrizable_of_compactSpace
 end Metric
