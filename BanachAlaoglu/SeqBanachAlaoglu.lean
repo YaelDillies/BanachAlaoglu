@@ -93,8 +93,8 @@ theorem WeakDual.isSeqCompact_polar [ProperSpace 𝕜] {s : Set V} (s_nhd : s �
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual 𝕜 V) (r : ℝ) :
     IsSeqCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) :=
-  @WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 _ _ V _ _ _ (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) Metric.isBounded_closedBall (isClosed_closedBall x' r)
-
+  --@WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 _ _ V _ _ _ (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) Metric.isBounded_closedBall (isClosed_closedBall x' r)
+  WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 V Metric.isBounded_closedBall (isClosed_closedBall x' r)
 
 
 end Seq_Banach_Alaoglu
