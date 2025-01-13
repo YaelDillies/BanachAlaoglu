@@ -184,8 +184,8 @@ lemma continuous_minDistMetric (fs_continuousinuous : ∀ n, Continuous (fs n)) 
   exact min_le_right _ _
 
 lemma continuous_minDistMetric' (fs_continuous : ∀ (n : ℕ), Continuous (fs n)) : Continuous (fun (p : X × X) ↦
-    dist (metricCopy.mk X fs fs_sep p.1) (metricCopy.mk X fs fs_sep p.2)) := by
-  exact continuous_minDistMetric fs_continuous
+    dist (metricCopy.mk X fs fs_sep p.1) (metricCopy.mk X fs fs_sep p.2)) :=
+  continuous_minDistMetric fs_continuous
 
 example (X Y Z : Type*) [TopologicalSpace X] [TopologicalSpace Y] [TopologicalSpace Z]
     (ϕ : X × Y → Z) (x : X) (hphi : Continuous ϕ) : Continuous (fun y ↦ ϕ ⟨x, y⟩ ) := by
