@@ -350,43 +350,4 @@ example : WeakDual 𝕜 V = (V →L[𝕜] 𝕜) := rfl
 end Seq_Banach_Alaoglu
 
 
-
-section inf_dim
-variable {X 𝕜: Type*} [NormedAddCommGroup X] [NormedField 𝕜] [NormedSpace 𝕜 X] [CompleteSpace X]
-
-/- If V is an infinite-dimensional Banach Space, then the dual V* is not metrizable -/
-lemma dual_not_metrizable : ¬TopologicalSpace.MetrizableSpace (WeakDual 𝕜 X) := by
-  by_contra
-  have dual_first_countable := @TopologicalSpace.PseudoMetrizableSpace.firstCountableTopology (WeakDual 𝕜 X) _ _
-  --have : ∀ a : (WeakDual 𝕜 X), (𝓝 a).IsCountablyGenerated := by sorry
-  have dual_count := dual_first_countable.nhds_generated_countable
-  specialize dual_count 0
-  have dual_count_iff := @Filter.isCountablyGenerated_iff_exists_antitone_basis (WeakDual 𝕜 X) (nhds 0)
-  --rw [this] at dual_count
-  have dual_hasAntitone := dual_count_iff.mp dual_count
-  obtain ⟨nhd_basis, hasAntitone⟩ := dual_hasAntitone
-
-  obtain ⟨basis, basis_countable⟩ := dual_count
-
-  sorry
-  --have thisbasis : ℕ → Set (WeakDual 𝕜 X) :=
-
-  --have := @Filter.HasBasis.exists_antitone_subbasis
-  --have xs : (ℕ → X)
-  --have phi : (WeakDual 𝕜 X)
-  --have := Filter.HasBasis.exists_antitone_subbasis (|phi (xs n)|)
-  --have phi : (WeakDual 𝕜 X)
-
- -- have := ∀ n : ℕ, Bn = Set.iInter (phi (xs n) )
-  --have : ∃ xs : (ℕ → X), ∃ ε > 0,
-
-
-#check Set.iUnion
-#check Set.iInter
-#check Filter.HasBasis.exists_antitone_subbasis
-#check Filter.isCountablyGenerated_iff_exists_antitone_basis
-#check NormedSpace 𝕜
-end inf_dim
-
-
 #help tactic
