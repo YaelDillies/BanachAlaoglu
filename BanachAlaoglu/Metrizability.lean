@@ -1,4 +1,3 @@
-
 import Mathlib.Analysis.NormedSpace.FunctionSeries
 import Mathlib.Analysis.SpecificLimits.Basic
 
@@ -13,7 +12,7 @@ section PseudoMetricSpace
 variable [∀ n, PseudoMetricSpace (E n)] (gs : ∀ n, X → E n)
 
 /- Define metric -/
-private noncomputable def ourMetric (x y : X) : ℝ :=
+noncomputable def ourMetric (x y : X) : ℝ :=
   ∑' n, (1/2)^n * min (dist (gs n x) (gs n y)) 1
 
 variable {gs}
@@ -41,7 +40,7 @@ lemma ourMetric_bdd {x y} : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * min (dis
 
 /- A helper lemma used in `ourMetric_triangle`. -/
 lemma summable_if_bounded {x y} : Summable fun n ↦ (1 / 2) ^ n * min (dist (gs n x) (gs n y)) 1 :=
-  Summable.of_norm_bounded (fun n ↦ (1 / 2) ^ n) summable_geometric_two (ourMetric_bdd)
+  summable_geometric_two.of_norm_bounded ourMetric_bdd
 
 lemma ourMetric_triangle {x y z} : ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
   unfold ourMetric
@@ -103,13 +102,9 @@ lemma ourMetric_triangle {x y z} : ourMetric gs x z ≤ ourMetric gs x y + ourMe
           simp [add_le_add_left]
     · positivity
 
-  rw [← tsum_add]
-  apply tsum_le_tsum
-  · exact fun i ↦ tri_ineq i
-  · exact summable_if_bounded
-  · simpa [mul_add] using Summable.add summable_if_bounded summable_if_bounded
-  exact summable_if_bounded
-  exact summable_if_bounded
+  rw [← summable_if_bounded.tsum_add summable_if_bounded]
+  apply summable_if_bounded.tsum_le_tsum tri_ineq
+  simpa [mul_add] using summable_if_bounded.add summable_if_bounded
 
 set_option linter.unusedVariables false in
 /- Create a copy of the space `X` without the typeclass instances. -/
@@ -176,7 +171,7 @@ lemma ourMetric_self' (gs_sep : (∀ ⦃x y⦄, x ≠ y → ∃ n, gs n x ≠ gs
       calc
         _ ↔ HasSum g 0 := (Summable.hasSum_iff h').symm
         _ ↔ g = 0 := hasSum_zero_iff_of_nonneg h
-        _ ↔ _ := Function.funext_iff
+        _ ↔ _ := funext_iff
     intro sum
     let f := fun n ↦ (1/2)^n * min (dist (gs n x) (gs n y)) 1
     have terms_pos n : f n >= 0 := by positivity
@@ -191,7 +186,7 @@ lemma ourMetric_self' (gs_sep : (∀ ⦃x y⦄, x ≠ y → ∃ n, gs n x ≠ gs
   obtain ⟨a, gs_neq⟩ := gs_sep
   use a
   by_contra h
-  cases' le_or_lt (dist (gs a x) (gs a y)) 1 with h1 h2
+  cases' le_or_gt (dist (gs a x) (gs a y)) 1 with h1 h2
   · simp only [min_eq_left_iff.mpr h1, dist_eq_zero, one_div, inv_pow, mul_eq_zero, inv_eq_zero,
       pow_eq_zero_iff', OfNat.ofNat_ne_zero, ne_eq, false_and, false_or] at *
     exact gs_neq h
@@ -208,7 +203,7 @@ noncomputable instance pseudoMetricSpace_metricCopy : PseudoMetricSpace (metricC
     ourPseudoMetricSpace
 
 /- Define an isometry between the spaces `metricCopy` and `pseudoMetricCopy`. -/
-def metricCopy.toPseudoMetricCopy : IsometryEquiv (α := metricCopy X gs gs_sep)
+noncomputable def metricCopy.toPseudoMetricCopy : IsometryEquiv (α := metricCopy X gs gs_sep)
     (β := pseudoMetricCopy X gs) where
   toFun := id
   invFun := id
@@ -279,7 +274,7 @@ separates points on X, then X is metrizable. -/
 lemma X_metrizable (gs : ∀ n, X → E n) (gs_continuous : ∀ n, Continuous (gs n))
     (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
     TopologicalSpace.MetrizableSpace X :=
-    (homeomorph_OurMetric gs_continuous gs_sep).embedding.metrizableSpace
+    (homeomorph_OurMetric gs_continuous gs_sep).isEmbedding.metrizableSpace
 
 end Metrizable_of_compactSpace
 end Metric

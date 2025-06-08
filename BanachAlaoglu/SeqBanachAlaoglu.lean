@@ -1,21 +1,17 @@
-
 import BanachAlaoglu.Metrizability
-import Mathlib.Topology.Algebra.UniformField
 import Mathlib.Analysis.Normed.Module.WeakDual
-import Mathlib.Topology.Defs.Filter
 
 open Topology
 section Seq_Banach_Alaoglu
-variable (𝕜 : Type*) [NontriviallyNormedField 𝕜] [ProperSpace 𝕜]
+variable (𝕜 : Type*) [NontriviallyNormedField 𝕜]
 variable (V : Type*) [SeminormedAddCommGroup V] [NormedSpace 𝕜 V]
 variable [TopologicalSpace.SeparableSpace V]
-variable (K : Set (WeakDual 𝕜 V)) (K_cpt : IsCompact K)
+variable (K : Set (WeakDual 𝕜 V))
 
 /- There exists a sequence of continuous functions that separates points on V*. -/
 lemma exists_gs : ∃ (gs : ℕ → (WeakDual 𝕜 V) → 𝕜),
     (∀ n, Continuous (gs n)) ∧ (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y) := by
   set vs := TopologicalSpace.denseSeq V
-  set gs : ℕ → K → 𝕜 := fun n ↦ fun ϕ ↦ (ϕ : WeakDual 𝕜 V) (vs n)
   use (fun n ↦ fun ϕ ↦ (ϕ : WeakDual 𝕜 V) (vs n))
   constructor
   · exact fun n ↦ WeakDual.eval_continuous (vs n)
@@ -27,9 +23,9 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual 𝕜 V) → 𝕜),
       (map_continuous w) (map_continuous y) this)
 
 /- A compact subset of the dual V* of a separable space V is metrizable. -/
-lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
+lemma subset_metrizable (K_cpt : IsCompact K) : TopologicalSpace.MetrizableSpace K := by
   have : CompactSpace K := isCompact_iff_compactSpace.mp K_cpt
-  obtain ⟨gs, gs_cont, gs_sep⟩ := exists_gs 𝕜 V K
+  obtain ⟨gs, gs_cont, gs_sep⟩ := exists_gs 𝕜 V
   let hs : ℕ → K → 𝕜 := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual 𝕜 V)
   apply X_metrizable (E := fun _ ↦ 𝕜) hs
   · intro n
@@ -38,7 +34,7 @@ lemma subset_metrizable : TopologicalSpace.MetrizableSpace K := by
     apply gs_sep
     exact Subtype.coe_ne_coe.mpr x_ne_y
 
-variable {E F : Type*}
+variable {𝕜₂ 𝕜₃ E F Fₗ G : Type*}
 variable [NormedAddCommGroup E] [NormedAddCommGroup F] [NormedAddCommGroup G]
   [NormedAddCommGroup Fₗ]
 
@@ -47,9 +43,9 @@ variable [NontriviallyNormedField 𝕜] [NontriviallyNormedField 𝕜₂] [Nontr
   {σ₁₂ : 𝕜 →+* 𝕜₂} {σ₂₃ : 𝕜₂ →+* 𝕜₃} (f g : E →SL[σ₁₂] F) (x y z : E)
 variable {E' : Type*} [SeminormedAddCommGroup E'] [NormedSpace 𝕜 E'] [RingHomIsometric σ₁₂]
 
-theorem ContinuousLinearMap.isSeqCompact_closure_image_coe_of_bounded [ProperSpace F] {s : Set (E' →SL[σ₁₂] F)}
-    (hb : Bornology.IsBounded s) : IsSeqCompact (closure (((↑) : (E' →SL[σ₁₂] F) → E' → F) '' s)) := by
-
+theorem ContinuousLinearMap.isSeqCompact_closure_image_coe_of_bounded [ProperSpace F]
+    {s : Set (E' →SL[σ₁₂] F)} (hb : Bornology.IsBounded s) :
+    IsSeqCompact (closure (((↑) : (E' →SL[σ₁₂] F) → E' → F) '' s)) := by
   sorry
 
   /-have : ∀ x, IsSeqCompact (closure (apply' F σ₁₂ x '' s)) := by
@@ -86,15 +82,15 @@ theorem WeakDual.isSeqCompact_of_isClosed_of_isBounded {s : Set (WeakDual 𝕜 V
   convert IsSeqCompact.range seq_cont_phi
   simp [Subtype.range_coe_subtype, Set.mem_preimage, coe_toNormedDual, Metric.mem_closedBall]
 
-theorem WeakDual.isSeqCompact_polar [ProperSpace 𝕜] {s : Set V} (s_nhd : s ∈ 𝓝 (0 : V)) :
+theorem WeakDual.isSeqCompact_polar {s : Set V} (s_nhd : s ∈ 𝓝 (0 : V)) :
     IsSeqCompact (polar 𝕜 s) :=
-  WeakDual.isSeqCompact_of_isClosed_of_isBounded (s := polar 𝕜 s) (NormedSpace.isBounded_polar_of_mem_nhds_zero 𝕜 s_nhd) (isClosed_polar _ _)
+  WeakDual.isSeqCompact_of_isClosed_of_isBounded (s := polar 𝕜 s) _ _
+    (NormedSpace.isBounded_polar_of_mem_nhds_zero 𝕜 s_nhd) (isClosed_polar _ _)
 
 /- The closed unit ball is sequentially compact in V* if V is separable. -/
 theorem WeakDual.isSeqCompact_closedBall (x' : NormedSpace.Dual 𝕜 V) (r : ℝ) :
     IsSeqCompact (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) :=
-  --@WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 _ _ V _ _ _ (WeakDual.toNormedDual ⁻¹' Metric.closedBall x' r) Metric.isBounded_closedBall (isClosed_closedBall x' r)
-  WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 V Metric.isBounded_closedBall (isClosed_closedBall x' r)
-
+  WeakDual.isSeqCompact_of_isClosed_of_isBounded 𝕜 V Metric.isBounded_closedBall
+    (isClosed_closedBall x' r)
 
 end Seq_Banach_Alaoglu

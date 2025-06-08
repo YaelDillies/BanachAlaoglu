@@ -1,3 +1,4 @@
-import BanachAlaoglu.BanachAlaoglu
 import BanachAlaoglu.Basic
+import BanachAlaoglu.Metrizability
+import BanachAlaoglu.SeqBanachAlaoglu
 import BanachAlaoglu.forAlliExample
