@@ -22,17 +22,14 @@ lemma exists_gs : ∃ (gs : ℕ → (WeakDual 𝕜 V) → 𝕜),
     exact DFunLike.coe_fn_eq.mp (Continuous.ext_on (TopologicalSpace.denseRange_denseSeq V)
       (map_continuous w) (map_continuous y) this)
 
-/- A compact subset of the dual V* of a separable space V is metrizable. -/
+/-- A compact subset of the dual V* of a separable space V is metrizable. -/
 lemma subset_metrizable (K_cpt : IsCompact K) : TopologicalSpace.MetrizableSpace K := by
   have : CompactSpace K := isCompact_iff_compactSpace.mp K_cpt
   obtain ⟨gs, gs_cont, gs_sep⟩ := exists_gs 𝕜 V
   let hs : ℕ → K → 𝕜 := fun n ↦ fun ϕ ↦ gs n (ϕ : WeakDual 𝕜 V)
-  apply X_metrizable (E := fun _ ↦ 𝕜) hs
-  · intro n
-    exact Continuous.comp (gs_cont n) continuous_subtype_val
-  · intro x y x_ne_y
-    apply gs_sep
-    exact Subtype.coe_ne_coe.mpr x_ne_y
+  exact .of_countable_separating (fun n k ↦ gs n k)
+    (fun n ↦ (gs_cont n).comp continuous_subtype_val)
+    fun x y hxy ↦ gs_sep <| Subtype.val_injective.ne hxy
 
 variable {𝕜₂ 𝕜₃ E F Fₗ G : Type*}
 variable [NormedAddCommGroup E] [NormedAddCommGroup F] [NormedAddCommGroup G]

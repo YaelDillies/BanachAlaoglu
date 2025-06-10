@@ -1,280 +1,235 @@
+/-
+Copyright (c) 2025 Janette Setälä, Yaël Dillies, Kalle Kytölä. All rights reserved.
+Released under Apache 2.0 license as described in the file LICENSE.
+Authors: Janette Setälä, Yaël Dillies, Kalle Kytölä
+-/
 import Mathlib.Analysis.NormedSpace.FunctionSeries
 import Mathlib.Analysis.SpecificLimits.Basic
 
+/-!
+# Embedding a countably separated space inside a space of sequences
+
+This file proves that a topological `X` separated by countably many continuous functions `X → Y n`
+where the `Y n` are metric spaces, then `X` can be embedded inside the product `∀ n, Y n`.
+-/
+
 -- TODO: Tag in mathlib
-attribute [simp] abs_mul abs_inv
+attribute [simp] abs_mul abs_inv ENNReal.ofReal_mul ENNReal.ofReal_inv_of_pos ENNReal.ofReal_pow
 
-open Function
+namespace ENNReal
 
-variable {X : Type*} {E : ℕ → Type*}
+lemma ofReal_mono : Monotone ENNReal.ofReal := fun _ _ ↦ ENNReal.ofReal_le_ofReal
 
-section PseudoMetricSpace
-variable [∀ n, PseudoMetricSpace (E n)] (gs : ∀ n, X → E n)
+@[simp] lemma ofReal_min (x y : ℝ) : ENNReal.ofReal (min x y) = min (.ofReal x) (.ofReal y) :=
+  ofReal_mono.map_min
 
-/- Define metric -/
-noncomputable def ourMetric (x y : X) : ℝ :=
-  ∑' n, (1/2)^n * min (dist (gs n x) (gs n y)) 1
+@[simp] lemma ofReal_dist {X : Type*} [PseudoMetricSpace X] (x y : X) :
+    .ofReal (dist x y) = edist x y := by simp [edist_dist]
 
-variable {gs}
+@[simp] lemma min_eq_zero {x y : ℝ≥0∞} : min x y = 0 ↔ x = 0 ∨ y = 0 := min_eq_bot
 
-/- Prove requirements of pseudometricspace: `ourMetric_self`, `ourMetric_comm` and
-`ourMetric_triangle`. -/
-lemma ourMetric_self {x y} : x = y → ourMetric gs x y = 0 := by
-  intro x_eq_y
-  simp [ourMetric, one_div, inv_pow, x_eq_y, sub_self, norm_zero, mul_zero, tsum_zero]
+end ENNReal
 
-lemma ourMetric_comm {x y} : ourMetric gs x y = ourMetric gs y x := by
-  unfold ourMetric
-  rw [tsum_congr]
-  intro b
-  rw [dist_comm]
+namespace PseudoMetricSpace
+variable {X : Type*}
 
-/- A helper lemma used in `ourMetric_triangle`. -/
-lemma ourMetric_bdd {x y} : (∀ (i : ℕ), ‖(fun n ↦ (1 / 2) ^ n * min (dist (gs n x) (gs n y)) 1) i‖
-  ≤ (fun n ↦ (1 / 2) ^ n) i) := by
-  intro i
-  simp only [one_div, inv_pow, Real.norm_eq_abs, abs_mul, abs_inv, abs_pow, Nat.abs_ofNat, inv_pos,
-    Nat.ofNat_pos, pow_pos, mul_le_iff_le_one_right]
-  rw [abs_of_nonneg (by positivity)]
-  exact min_le_right (dist (gs i x) (gs i y)) 1
+/-- Build a new pseudometric space from an old one where the distance uniform structure is provably
+(but typically non-definitionaly) equal to some given distance structure. -/
+-- See note [forgetful inheritance]
+-- See note [reducible non-instances]
+abbrev replaceDist (m : PseudoMetricSpace X) (d : X → X → ℝ) (hd : d = dist) :
+    PseudoMetricSpace X where
+  dist := d
+  dist_self := by simp [hd]
+  dist_comm := by simp [hd, dist_comm]
+  dist_triangle := by simp [hd, dist_triangle]
+  edist_dist := by simp [hd, edist_dist]
+  uniformity_dist := by simp [hd, uniformity_dist]
+  cobounded_sets := by simp [hd, cobounded_sets]
+  __ := m
 
-/- A helper lemma used in `ourMetric_triangle`. -/
-lemma summable_if_bounded {x y} : Summable fun n ↦ (1 / 2) ^ n * min (dist (gs n x) (gs n y)) 1 :=
-  summable_geometric_two.of_norm_bounded ourMetric_bdd
+lemma replaceDist_eq (m : PseudoMetricSpace X) (d : X → X → ℝ) (hd : d = dist) :
+    m.replaceDist d hd = m := by ext : 2; exact hd
 
-lemma ourMetric_triangle {x y z} : ourMetric gs x z ≤ ourMetric gs x y + ourMetric gs y z := by
-  unfold ourMetric
-  have tri_ineq n : (1/2)^n * min (dist (gs n x) (gs n z)) 1
-      ≤ (1/2)^n * min (dist (gs n x) (gs n y)) 1 + (1/2)^n * min (dist (gs n y) (gs n z)) 1 := by
-    rw [← mul_add, mul_le_mul_left]
-    simp only [ne_eq, min_le_iff]
-    cases' (min_cases (dist (gs n x) (gs n z)) 1)
-    · cases' (min_cases (dist (gs n x) (gs n y)) 1) with h1 h2
-      · obtain ⟨eq_dist, _⟩ := h1
-        rw [eq_dist]
-        cases' (min_cases (dist (gs n y) (gs n z)) 1) with h1 h2
-        · obtain ⟨eq_dist, _⟩ := h1
-          rw [eq_dist]
-          left
-          exact dist_triangle (gs n x) (gs n y) (gs n z)
-        · obtain ⟨eq_one, _⟩ := h2
-          rw [eq_one]
-          right
-          simp [add_le_add_left]
-          positivity
-      · obtain ⟨eq_one, _⟩ := h2
-        rw [eq_one]
-        cases' (min_cases (dist (gs n y) (gs n z)) 1) with h1 h2
-        · obtain ⟨eq_dist, _⟩ := h1
-          rw [eq_dist]
-          right
-          simp [add_le_add_left]
-          positivity
-        · obtain ⟨eq_one, _⟩ := h2
-          rw [eq_one]
-          right
-          simp [add_le_add_left]
-
-    · cases' (min_cases (dist (gs n x) (gs n y)) 1) with h1 h2
-      · obtain ⟨eq_dist, _⟩ := h1
-        rw [eq_dist]
-        cases' (min_cases (dist (gs n y) (gs n z)) 1) with h1 h2
-        · obtain ⟨eq_dist, _⟩ := h1
-          rw [eq_dist]
-          left
-          exact dist_triangle (gs n x) (gs n y) (gs n z)
-        · obtain ⟨eq_one, _⟩ := h2
-          rw [eq_one]
-          right
-          simp [add_le_add_left]
-          positivity
-      · obtain ⟨eq_one, _⟩ := h2
-        rw [eq_one]
-        cases' (min_cases (dist (gs n y) (gs n z)) 1) with h1 h2
-        · obtain ⟨eq_dist, _⟩ := h1
-          rw [eq_dist]
-          right
-          simp [add_le_add_left]
-          positivity
-        · obtain ⟨eq_one, _⟩ := h2
-          rw [eq_one]
-          right
-          simp [add_le_add_left]
-    · positivity
-
-  rw [← summable_if_bounded.tsum_add summable_if_bounded]
-  apply summable_if_bounded.tsum_le_tsum tri_ineq
-  simpa [mul_add] using summable_if_bounded.add summable_if_bounded
-
-set_option linter.unusedVariables false in
-/- Create a copy of the space `X` without the typeclass instances. -/
-def pseudoMetricCopy (X : Type*) (gs : ∀n, X → E n) := X
-
-/- Define a pseudometricspace on the space `pseudoMetricCopy`. -/
-noncomputable instance ourPseudoMetricSpace : PseudoMetricSpace (pseudoMetricCopy X gs) where
-  dist := ourMetric gs
-  dist_self x := ourMetric_self rfl
-  dist_comm x y := ourMetric_comm
-  dist_triangle x y z := ourMetric_triangle
-  edist_dist := by simp only [← ENNReal.ofReal_coe_nnreal, NNReal.coe_mk, implies_true]
-
-/- Define functions between `pseudoMetricCopy` and `X`. -/
-def pseudoMetricCopy.mk (X : Type*) (gs : ∀n, X → E n) :
-    X → pseudoMetricCopy X gs := id
-
-def pseudoMetricCopy.toOrigin (X : Type*) (gs : ∀n, X → E n) :
-    pseudoMetricCopy X gs → X := id
-
-section continuity
-variable [TopologicalSpace X] (gs_continuous : ∀ n, Continuous (gs n))
-
-/- Prove continuity of the metric `ourMetric`. -/
-lemma continuous_ourMetric (gs_continuous : ∀ n, Continuous (gs n)) :
-    Continuous (fun (p : X × X) ↦ ourMetric gs p.1 p.2) := by
-  unfold ourMetric
-  refine continuous_tsum (by fun_prop) summable_geometric_two ?_
-  simp only [one_div, inv_pow, abs_mul, abs_inv, abs_pow, Real.norm_eq_abs, Nat.abs_ofNat,
-    inv_pos, Nat.ofNat_pos, pow_pos, mul_le_iff_le_one_right, Prod.forall]
-  intro n a b
-  rw [abs_of_nonneg (by positivity)]
-  exact min_le_right _ _
-
-lemma continuous_ourMetric' (gs_continuous : ∀ n, Continuous (gs n)) :
-    Continuous (fun (p : X × X) ↦
-    dist (pseudoMetricCopy.mk X gs p.1) (pseudoMetricCopy.mk X gs p.2)) :=
-  continuous_ourMetric gs_continuous
-
-/- Prove continuity of `pseudoMetricCopy.mk`. -/
-lemma continuous_pseudoMetricCopy_mk (gs_continuous : ∀ n, Continuous (gs n)) :
-    Continuous (pseudoMetricCopy.mk X gs) :=
-  continuous_iff_continuous_dist.2 (continuous_ourMetric' gs_continuous)
-
-end continuity
 end PseudoMetricSpace
 
-section Metric
+namespace PseudoEMetricSpace
 
-/- Further assume that the codomains of functions `gs` are metric spaces,
-and that `gs` separates points on `X`. -/
-variable {E : ℕ → Type*} [∀ n, MetricSpace (E n)]
-variable {gs : ∀ n, X → E n}
+/-- One gets a pseudometric space from an emetric space if the edistance
+is everywhere finite, by pushing the edistance to reals. We set it up so that the edist and the
+uniformity are defeq in the pseudometric space and the pseudoemetric space. In this definition, the
+distance is given separately, to be able to prescribe some expression which is not defeq to the
+push-forward of the edistance to reals. See note [reducible non-instances]. -/
+abbrev toPseudoMetricSpaceOfDist' {X : Type*} [e : PseudoEMetricSpace X] (dist : X → X → ℝ)
+    (dist_nonneg : ∀ x y, 0 ≤ dist x y)
+    (h : ∀ x y, edist x y = .ofReal (dist x y)) : PseudoMetricSpace X where
+  dist := dist
+  dist_self x := by simpa [h, (dist_nonneg _ _).le_iff_eq, -edist_self] using edist_self x
+  dist_comm x y := by simpa [h, dist_nonneg] using edist_comm x y
+  dist_triangle x y z := by
+    simpa [h, dist_nonneg, add_nonneg, ← ENNReal.ofReal_add] using edist_triangle x y z
+  edist := edist
+  edist_dist _ _ := by simp only [h, ENNReal.ofReal_toReal (edist_ne_top _ _)]
+  toUniformSpace := toUniformSpace
+  uniformity_dist := e.uniformity_edist.trans <| by
+    simpa [h, dist_nonneg, ENNReal.coe_toNNReal_eq_toReal]
+      using (Metric.uniformity_edist_aux fun x y : X => (edist x y).toNNReal).symm
 
-/- Prove requirement of a metric space `ourMetric_self'`. -/
-lemma ourMetric_self' (gs_sep : (∀ ⦃x y⦄, x ≠ y → ∃ n, gs n x ≠ gs n y)) {x y} :
-    ourMetric gs x y = 0 → x = y := by
-  intro sum
-  rw [ourMetric] at sum
-  have sum_zero : ∑' n, (1/2)^n * min (dist (gs n x) (gs n y)) 1 = 0 →
-      ∀ n, (1/2)^n * min (dist (gs n x) (gs n y)) 1 = 0 := by
-    have tsum_zero (g : ℕ → ℝ) (h : ∀ (i : ℕ), g i ≥ 0) (h' : Summable g) :
-        ∑' (i : ℕ), g i = 0 ↔ ∀ (i : ℕ), g i = 0 := by
+end PseudoEMetricSpace
+
+open Function Topology
+
+variable {X : Type*} {Y : ℕ → Type*} {f : ∀ n, X → Y n}
+
+namespace Metric
+
+include f in
+variable (X Y f) in
+/-- Given a type `X` and a sequence `Y` of metric spaces and a sequence `f : : ∀ n, X → Y n` of
+separating functions, `PiNatEmbed X Y f` is a type synonym for `X` seen as a subset of `∀ n, Y n`.
+-/
+structure PiNatEmbed (X : Type*) (Y : ℕ → Type*) (f : ∀ n, X → Y n) where
+  /-- The map from `X` to the subset of `∀ n, Y n`. -/
+  toPiNat ::
+  /-- The map from the subset of `∀ n, Y n` to `X`. -/
+  ofPiNat : X
+
+namespace PiNatEmbed
+
+@[ext] lemma ext {x y : PiNatEmbed X Y f} (hxy : x.ofPiNat = y.ofPiNat) : x = y := by
+  cases x; congr!
+
+variable (X Y f) in
+/-- Equivalence between `X` and its embedding into `∀ n, Y n`. -/
+@[simps]
+def toPiNatEquiv : X ≃ PiNatEmbed X Y f where
+  toFun := toPiNat
+  invFun := ofPiNat
+  left_inv _ := rfl
+  right_inv _ := rfl
+
+section PseudoEMetricSpace
+variable [∀ n, PseudoEMetricSpace (Y n)]
+
+private noncomputable abbrev truncEDist (x y : PiNatEmbed X Y f) (n : ℕ) :=
+  (1 / 2) ^ n * min (edist (f n x.ofPiNat) (f n y.ofPiNat)) 1
+
+private lemma truncEDist_le_geometric {x y : PiNatEmbed X Y f} (n : ℕ) :
+    truncEDist x y n ≤ (1 / 2) ^ n := by
+  transitivity (1 / 2) ^ n * 1
+  · unfold truncEDist
+    gcongr
+    exact min_le_right ..
+  · simp
+
+noncomputable instance : PseudoEMetricSpace (PiNatEmbed X Y f) where
+  edist x y := ∑' n, truncEDist x y n
+  edist_self x := by simp
+  edist_comm x y := by simp [truncEDist, edist_comm]
+  edist_triangle x y z := calc
+        ∑' n, truncEDist x z n
+    _ ≤ ∑' n, (truncEDist x y n + truncEDist y z n) := by
+      gcongr with n
+      simp_rw [← mul_add, truncEDist]
+      gcongr
       calc
-        _ ↔ HasSum g 0 := (Summable.hasSum_iff h').symm
-        _ ↔ g = 0 := hasSum_zero_iff_of_nonneg h
-        _ ↔ _ := funext_iff
-    intro sum
-    let f := fun n ↦ (1/2)^n * min (dist (gs n x) (gs n y)) 1
-    have terms_pos n : f n >= 0 := by positivity
-    apply (tsum_zero (fun n ↦ (1/2)^n * min (dist (gs n x) (gs n y)) 1) (terms_pos)
-        summable_if_bounded).mp
-    exact sum
-  apply sum_zero at sum
-  simp only [one_div, inv_pow, mul_eq_zero, inv_eq_zero, pow_eq_zero_iff', OfNat.ofNat_ne_zero,
-    ne_eq, false_and, norm_eq_zero, sub_eq_zero, false_or] at sum
-  contrapose! sum
-  specialize gs_sep sum
-  obtain ⟨a, gs_neq⟩ := gs_sep
-  use a
-  by_contra h
-  cases' le_or_gt (dist (gs a x) (gs a y)) 1 with h1 h2
-  · simp only [min_eq_left_iff.mpr h1, dist_eq_zero, one_div, inv_pow, mul_eq_zero, inv_eq_zero,
-      pow_eq_zero_iff', OfNat.ofNat_ne_zero, ne_eq, false_and, false_or] at *
-    exact gs_neq h
-  · linarith [min_eq_right_iff.mpr (LT.lt.le h2)]
+            min (edist (f n x.ofPiNat) (f n z.ofPiNat)) 1
+        _ ≤ min (edist (f n x.ofPiNat) (f n y.ofPiNat) +
+              edist (f n y.ofPiNat) (f n z.ofPiNat)) 1 := by
+          gcongr; exact edist_triangle (f n x.ofPiNat) (f n y.ofPiNat) (f n z.ofPiNat)
+        _ ≤ min (edist (f n x.ofPiNat) (f n y.ofPiNat)) 1 +
+              min (edist (f n y.ofPiNat) (f n z.ofPiNat)) 1 := by
+          obtain hxy | hxy := le_total (edist (f n x.ofPiNat) (f n y.ofPiNat)) 1 <;>
+            obtain hyz | hyz := le_total (edist (f n y.ofPiNat) (f n z.ofPiNat)) 1 <;>
+              simp [*]
+    _ = _ := ENNReal.tsum_add ..
 
-/- Create a copy of the space `pseudoMetricCopy` without the typeclass instances. -/
-def metricCopy (X : Type*) (gs : ∀n, X → E n) (_ : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :=
-    pseudoMetricCopy X gs
+lemma edist_def (x y : PiNatEmbed X Y f) :
+    edist x y = ∑' n, (1/2) ^ n * min (edist (f n x.ofPiNat) (f n y.ofPiNat)) 1 := rfl
 
-variable (gs_sep : (∀ ⦃x y⦄, x ≠ y → ∃ n, gs n x ≠ gs n y))
+end PseudoEMetricSpace
 
-/- Define a pseudometric space on the space `metricCopy`. -/
-noncomputable instance pseudoMetricSpace_metricCopy : PseudoMetricSpace (metricCopy X gs gs_sep) :=
-    ourPseudoMetricSpace
+section PseudoMetricSpace
+variable [∀ n, PseudoMetricSpace (Y n)]
 
-/- Define an isometry between the spaces `metricCopy` and `pseudoMetricCopy`. -/
-noncomputable def metricCopy.toPseudoMetricCopy : IsometryEquiv (α := metricCopy X gs gs_sep)
-    (β := pseudoMetricCopy X gs) where
-  toFun := id
-  invFun := id
-  left_inv := congrFun rfl
-  right_inv := congrFun rfl
-  isometry_toFun := fun _ ↦ congrFun rfl
+private lemma min_le_geometric {x y : X} (n : ℕ) :
+    ‖(1 / 2) ^ n * min (dist (f n x) (f n y)) 1‖ ≤ (1 / 2) ^ n := by
+  simp only [one_div, inv_pow, Real.norm_eq_abs, abs_mul, abs_inv, abs_pow, Nat.abs_ofNat,
+    inv_pos, Nat.ofNat_pos, pow_pos, mul_le_iff_le_one_right]
+  rw [abs_of_nonneg (by positivity)]
+  exact min_le_right ..
 
-/- Define functions between `metricCopy` and `X`. -/
-def metricCopy.mk (X : Type*) (gs : ∀n, X → E n) (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
-    X → metricCopy X gs gs_sep := id
+private lemma summable_min {x y : X} :
+    Summable fun n ↦ (1 / 2) ^ n * min (dist (f n x) (f n y)) 1 :=
+  summable_geometric_two.of_norm_bounded min_le_geometric
 
-def metricCopy.toOrigin (X : Type*) (gs : ∀n, X → E n)
-    (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
-    metricCopy X gs gs_sep → X := id
+noncomputable instance : PseudoMetricSpace (PiNatEmbed X Y f) :=
+  PseudoEMetricSpace.toPseudoMetricSpaceOfDist'
+    (fun x y ↦ ∑' n, (1/2) ^ n * min (dist (f n x.ofPiNat) (f n y.ofPiNat)) 1)
+    (fun x y ↦ by dsimp; positivity) fun x y ↦ by
+      rw [edist_def, ENNReal.ofReal_tsum_of_nonneg (fun _ ↦ by positivity) summable_min]
+      simp [edist, truncEDist, ENNReal.inv_pow]
 
-/- Define a metric space on the space `metricCopy`. -/
-noncomputable instance metricSpace_metricCopy : MetricSpace (metricCopy X gs gs_sep) where
-  eq_of_dist_eq_zero := ourMetric_self' gs_sep
+lemma dist_def (x y : PiNatEmbed X Y f) :
+    dist x y = ∑' n, (1/2) ^ n * min (dist (f n x.ofPiNat) (f n y.ofPiNat)) 1 := rfl
 
 variable [TopologicalSpace X]
 
-/- Prove continuity of `metricCopy.mk` using the isometry defined above. -/
-lemma continuous_metricCopy_mk (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
-    (gs_continuous : ∀ n, Continuous (gs n)) :
-    Continuous (metricCopy.mk X gs gs_sep) :=
-  (IsometryEquiv.continuous ((metricCopy.toPseudoMetricCopy gs_sep).symm)).comp
-    <| continuous_pseudoMetricCopy_mk gs_continuous
+lemma continuous_toPiNat (continuous_f : ∀ n, Continuous (f n)) :
+    Continuous (toPiNat : X → PiNatEmbed X Y f) := by
+  rw [continuous_iff_continuous_dist]
+  exact continuous_tsum (by fun_prop) summable_geometric_two fun n (a, b) ↦ min_le_geometric _
 
-section Metrizable_of_compactSpace
-/- Assume space `X` is compact. -/
-variable [CompactSpace X]
-variable (gs_continuous : ∀ n, Continuous (gs n))
-variable (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y))
+end PseudoMetricSpace
 
-/- Prove continuity of `metricCopy.toOrigin`. -/
-lemma continuous_metricCopy_toOrigin (gs_continuous : ∀ n, Continuous (gs n)) :
-    Continuous (metricCopy.toOrigin X gs gs_sep) := by
-  have symm (s : Set X) : metricCopy.toOrigin X gs gs_sep ⁻¹' s = metricCopy.mk X gs gs_sep '' s :=
-    Eq.symm (Set.EqOn.image_eq_self fun ⦃x⦄ ↦ congrFun rfl)
-  have closed_impl (s : Set X) : IsClosed s → IsClosed (metricCopy.toOrigin X gs gs_sep ⁻¹' s) := by
-    intro s_closed
-    have s_cpt_X := IsClosed.isCompact s_closed
-    rw [isCompact_iff_finite_subcover] at s_cpt_X
-    have open_preimage s : IsOpen s → IsOpen (metricCopy.mk X gs gs_sep ⁻¹' s) :=
-      continuous_def.mp (continuous_metricCopy_mk gs_sep gs_continuous) s
-    have closed_preimage_s : IsClosed (metricCopy.toOrigin X gs gs_sep ⁻¹' s) := by
-      have s_image_cpt : IsCompact (metricCopy.mk X gs gs_sep '' s) := by
-        apply isCompact_of_finite_subcover
-        intro _ Us Usi_open
-        simp only [metricCopy.mk, id_eq, Set.image_id']
-        exact fun a ↦ s_cpt_X Us (fun i ↦ open_preimage (Us i) (Usi_open i)) a
-      simpa [symm s] using IsCompact.isClosed s_image_cpt
-    exact closed_preimage_s
-  exact continuous_iff_isClosed.mpr closed_impl
+section EMetricSpace
+variable [∀ n, EMetricSpace (Y n)]
 
-/- Define a homeomorphism between spaces `X` and `metricCopy`. -/
-noncomputable def homeomorph_OurMetric :
-  X ≃ₜ metricCopy X gs gs_sep where
-    toFun := metricCopy.mk X gs gs_sep
-    invFun := metricCopy.toOrigin X gs gs_sep
-    left_inv := congrFun rfl
-    right_inv := congrFun rfl
-    continuous_toFun := continuous_metricCopy_mk gs_sep gs_continuous
-    continuous_invFun := continuous_metricCopy_toOrigin gs_sep gs_continuous
+/-- If the functions `f n : X → Y n` separate points of `X`, then `X` can be embedded into
+`∀ n, Y n`. -/
+noncomputable abbrev emetricSpace (separating_f : Pairwise fun x y ↦ ∃ n, f n x ≠ f n y) :
+    EMetricSpace (PiNatEmbed X Y f) where
+  eq_of_edist_eq_zero hxy := by ext; exact separating_f.eq <| by simpa [edist_def] using hxy
 
-/- If X is compact, and there exists a seq of continuous real-valued functions that
-separates points on X, then X is metrizable. -/
-lemma X_metrizable (gs : ∀ n, X → E n) (gs_continuous : ∀ n, Continuous (gs n))
-    (gs_sep : (∀ ⦃x y⦄, x≠y → ∃ n, gs n x ≠ gs n y)) :
-    TopologicalSpace.MetrizableSpace X :=
-    (homeomorph_OurMetric gs_continuous gs_sep).isEmbedding.metrizableSpace
+end EMetricSpace
 
-end Metrizable_of_compactSpace
-end Metric
+section MetricSpace
+variable [∀ n, MetricSpace (Y n)]
+
+/-- If the functions `f n : X → Y n` separate points of `X`, then `X` can be embedded into
+`∀ n, Y n`. -/
+noncomputable abbrev metricSpace (separating_f : Pairwise fun x y ↦ ∃ n, f n x ≠ f n y) :
+    MetricSpace (PiNatEmbed X Y f) :=
+  (emetricSpace separating_f).toMetricSpace fun x y ↦ by simp [← ENNReal.ofReal_dist]
+
+variable [TopologicalSpace X] [CompactSpace X]
+
+lemma isHomeomorph_toPiNat (continuous_f : ∀ n, Continuous (f n))
+    (separating_f : Pairwise fun x y ↦ ∃ n, f n x ≠ f n y) :
+    IsHomeomorph (toPiNat : X → PiNatEmbed X Y f) := by
+  letI := emetricSpace separating_f
+  rw [isHomeomorph_iff_continuous_bijective]
+  exact ⟨continuous_toPiNat continuous_f, (toPiNatEquiv X Y f).bijective⟩
+
+variable (X Y f) in
+/-- Homeomorphism between `X` and its embedding into `∀ n, Y n` induced by a separating family of
+continuous functions `f n : X → Y n`. -/
+@[simps!]
+noncomputable def toPiNatHomeo (continuous_f : ∀ n, Continuous (f n))
+    (separating_f : Pairwise fun x y ↦ ∃ n, f n x ≠ f n y) :
+    X ≃ₜ PiNatEmbed X Y f :=
+  (toPiNatEquiv X Y f).toHomeomorphOfIsInducing
+    (isHomeomorph_toPiNat continuous_f separating_f).isInducing
+
+end MetricSpace
+end Metric.PiNatEmbed
+
+variable [TopologicalSpace X] [CompactSpace X] [∀ n, MetricSpace (Y n)]
+
+/-- If `X` is compact, and there exists a sequence of continuous functions `f n : X → Y n` to
+metric spaces `Y n` that separate points on `X`, then `X` is metrizable. -/
+lemma TopologicalSpace.MetrizableSpace.of_countable_separating (f : ∀ n, X → Y n)
+    (continuous_f : ∀ n, Continuous (f n)) (separating_f : Pairwise fun x y ↦ ∃ n, f n x ≠ f n y) :
+    MetrizableSpace X :=
+  letI := Metric.PiNatEmbed.metricSpace separating_f
+  (Metric.PiNatEmbed.toPiNatHomeo X Y f continuous_f separating_f).isEmbedding.metrizableSpace
